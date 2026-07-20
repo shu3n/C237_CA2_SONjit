@@ -1,0 +1,24 @@
+<%- include('../partials/header') %>
+
+<h1><%= trip.trip_name %></h1>
+<p><%= trip.start_date.toDateString() %> - <%= trip.end_date.toDateString() %></p>
+<p>Budget: $<%= trip.budget %></p>
+<p><%= trip.notes %></p>
+
+<a href="/trips/<%= trip.trip_id %>/edit">Edit Trip</a>
+<form action="/trips/<%= trip.trip_id %>/delete" method="POST" style="display:inline">
+    <button type="submit" onclick="return confirm('Delete this trip?')">Delete Trip</button>
+</form>
+
+<h2>Itinerary</h2>
+<ul>
+    <% items.forEach(item => { %>
+        <li>
+            <strong><%= item.item_name %></strong> (<%= item.category %>)
+            - <%= item.item_date.toDateString() %> <%= item.item_time %>
+            - $<%= item.cost %>
+        </li>
+    <% }) %>
+</ul>
+
+<%- include('../partials/footer') %>

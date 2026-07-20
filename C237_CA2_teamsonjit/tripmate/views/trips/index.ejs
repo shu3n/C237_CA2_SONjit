@@ -1,0 +1,27 @@
+<%- include('../partials/header') %>
+
+<h1>My Trips</h1>
+
+<form action="/trips/search/results" method="GET" class="search-form">
+    <input type="text" name="keyword" placeholder="Search trips...">
+    <select name="sort">
+        <option value="">Sort by</option>
+        <option value="date">Start Date</option>
+        <option value="budget">Budget</option>
+    </select>
+    <button type="submit">Search</button>
+</form>
+
+<a href="/trips/create/new" class="btn">+ New Trip</a>
+
+<ul class="trip-list">
+    <% trips.forEach(trip => { %>
+        <li>
+            <a href="/trips/<%= trip.trip_id %>"><%= trip.trip_name %></a>
+            (<%= trip.start_date.toDateString() %> - <%= trip.end_date.toDateString() %>)
+            - Budget: $<%= trip.budget %>
+        </li>
+    <% }) %>
+</ul>
+
+<%- include('../partials/footer') %>
