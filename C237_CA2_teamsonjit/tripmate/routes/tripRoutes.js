@@ -4,8 +4,8 @@
 // ============================================
 const express = require('express');
 const router = express.Router();
-const db = require('../../../../../../Downloads/tripmate-noel-updated/tripmate/config/db');
-const { isLoggedIn } = require('../../../../../../Downloads/tripmate-noel-updated/tripmate/routes/authRoutes');
+const db = require('../config/db');
+const { isLoggedIn } = require('./authRoutes');
 
 // ============================================
 // Student C - View trips (dashboard + detail)
