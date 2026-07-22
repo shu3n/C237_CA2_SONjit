@@ -1,0 +1,33 @@
+<%- include('../partials/header') %>
+
+<h1><%= trip.trip_name %></h1>
+<p><%= trip.start_date.toDateString() %> - <%= trip.end_date.toDateString() %></p>
+<p>Budget: $<%= trip.budget %></p>
+<p><%= trip.notes %></p>
+
+<a href="/trips/<%= trip.trip_id %>/edit">Edit Trip</a>
+<form action="/trips/<%= trip.trip_id %>/delete" method="POST" style="display:inline">
+    <% if (user.role === 'admin' && user.id !== trip.user_id) { %>
+        <button type="submit" onclick="return confirm('You are an ADMIN deleting a trip you do not own. Delete this trip?')">Delete Trip (Admin)</button>
+    <% } else { %>
+        <button type="submit" onclick="return confirm('Delete this trip?')">Delete Trip</button>
+    <% } %>
+</form>
+
+<h2>Itinerary</h2>
+<a href="/trips/<%= trip.trip_id %>/items/new" class="btn">+ Add Itinerary Item</a>
+<ul>
+    <% items.forEach(item => { %>
+        <li>
+            <strong><%= item.item_name %></strong> (<%= item.category %>)
+            - <%= item.item_date.toDateString() %> <%= item.item_time %>
+            - $<%= item.cost %>
+            <a href="/trips/<%= trip.trip_id %>/items/<%= item.item_id %>/edit">Edit</a>
+            <form action="/trips/<%= trip.trip_id %>/items/<%= item.item_id %>/delete" method="POST" style="display:inline">
+                <button type="submit" onclick="return confirm('Delete this itinerary item?')">Delete</button>
+            </form>
+        </li>
+    <% }) %>
+</ul>
+
+<%- include('../partials/footer') %>
