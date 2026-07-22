@@ -24,4 +24,7 @@ button:hover { background: #1a252f; }
 .trip-list li { background: white; padding: 12px; margin-bottom: 8px; border-radius: 4px; }
 
 .btn { display: inline-block; margin: 10px 0; padding: 8px 14px; background: #27ae60; color: white; text-decoration: none; border-radius: 4px; }
+
+.error-list { background: #fdecea; border: 1px solid #f5c6cb; color: #b71c1c; padding: 12px 20px; border-radius: 4px; max-width: 400px; margin-bottom: 15px; }
+.error-list li { margin: 2px 0; }
 .search-form { flex-direction: row; align-items: center; gap: 10px; }

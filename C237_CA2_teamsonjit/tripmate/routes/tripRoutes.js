@@ -4,8 +4,8 @@
 // ============================================
 const express = require('express');
 const router = express.Router();
-const db = require('../config/db');
-const { isLoggedIn } = require('./authRoutes');
+const db = require('../../../../../../Downloads/tripmate-noel-updated/tripmate/config/db');
+const { isLoggedIn } = require('../../../../../../Downloads/tripmate-noel-updated/tripmate/routes/authRoutes');
 
 // ============================================
 // Student C - View trips (dashboard + detail)
@@ -33,20 +33,125 @@ router.get('/:id', isLoggedIn, (req, res) => {
 });
 
 // ============================================
-// Student B - Create trip
+// Noel - Create trip (forms + validation)
 // ============================================
 router.get('/create/new', isLoggedIn, (req, res) => {
-    res.render('trips/create');
+    res.render('trips/create', { errors: [], formData: {} });
 });
 
 router.post('/create', isLoggedIn, (req, res) => {
     const { trip_name, start_date, end_date, budget, notes } = req.body;
+    const errors = [];
+
+    // ---- Server-side validation (never trust the client) ----
+    if (!trip_name || trip_name.trim() === '') {
+        errors.push('Trip name is required.');
+    }
+    if (!start_date) {
+        errors.push('Start date is required.');
+    }
+    if (!end_date) {
+        errors.push('End date is required.');
+    }
+    if (start_date && end_date && new Date(end_date) < new Date(start_date)) {
+        errors.push('End date cannot be earlier than the start date.');
+    }
+    if (budget !== '' && budget !== undefined && (isNaN(budget) || Number(budget) < 0)) {
+        errors.push('Budget must be a positive number.');
+    }
+
+    if (errors.length > 0) {
+        return res.render('trips/create', {
+            errors,
+            formData: { trip_name, start_date, end_date, budget, notes }
+        });
+    }
+
     const sql = `INSERT INTO trips (user_id, trip_name, start_date, end_date, budget, notes)
                  VALUES (?, ?, ?, ?, ?, ?)`;
 
-    db.query(sql, [req.session.user.id, trip_name, start_date, end_date, budget, notes], (err) => {
-        if (err) return res.send('Error creating trip.');
+    db.query(sql, [req.session.user.id, trip_name.trim(), start_date, end_date, budget || 0, notes], (err) => {
+        if (err) {
+            console.error(err);
+            return res.render('trips/create', {
+                errors: ['Something went wrong creating your trip. Please try again.'],
+                formData: { trip_name, start_date, end_date, budget, notes }
+            });
+        }
         res.redirect('/trips');
+    });
+});
+
+// ============================================
+// Noel - Add itinerary item (forms + validation)
+// ============================================
+router.get('/:tripId/items/new', isLoggedIn, (req, res) => {
+    const tripSql = 'SELECT * FROM trips WHERE trip_id = ? AND user_id = ?';
+    db.query(tripSql, [req.params.tripId, req.session.user.id], (err, tripResults) => {
+        if (err) return res.send('Error loading trip.');
+        if (tripResults.length === 0) return res.status(403).send('Trip not found or access denied.');
+
+        res.render('trips/add-item', { trip: tripResults[0], errors: [], formData: {} });
+    });
+});
+
+router.post('/:tripId/items/create', isLoggedIn, (req, res) => {
+    const tripSql = 'SELECT * FROM trips WHERE trip_id = ? AND user_id = ?';
+    db.query(tripSql, [req.params.tripId, req.session.user.id], (err, tripResults) => {
+        if (err) return res.send('Error loading trip.');
+        if (tripResults.length === 0) return res.status(403).send('Trip not found or access denied.');
+
+        const trip = tripResults[0];
+        const { item_name, category, item_date, item_time, location, cost, notes } = req.body;
+        const errors = [];
+        const validCategories = ['Flight', 'Accommodation', 'Activity', 'Food', 'Transport', 'Other'];
+
+        // ---- Server-side validation ----
+        if (!item_name || item_name.trim() === '') {
+            errors.push('Item name is required.');
+        }
+        if (!category || !validCategories.includes(category)) {
+            errors.push('Please select a valid category.');
+        }
+        if (!item_date) {
+            errors.push('Date is required.');
+        } else {
+            const itemDateObj = new Date(item_date);
+            const tripStart = new Date(trip.start_date);
+            const tripEnd = new Date(trip.end_date);
+            if (itemDateObj < tripStart || itemDateObj > tripEnd) {
+                errors.push("Item date must fall within the trip's start and end dates.");
+            }
+        }
+        if (cost !== '' && cost !== undefined && (isNaN(cost) || Number(cost) < 0)) {
+            errors.push('Cost must be a positive number.');
+        }
+
+        if (errors.length > 0) {
+            return res.render('trips/add-item', {
+                trip,
+                errors,
+                formData: { item_name, category, item_date, item_time, location, cost, notes }
+            });
+        }
+
+        const insertSql = `INSERT INTO itinerary_items (trip_id, item_name, category, item_date, item_time, location, cost, notes)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
+
+        db.query(insertSql,
+            [req.params.tripId, item_name.trim(), category, item_date, item_time || null, location, cost || 0, notes],
+            (err2) => {
+                if (err2) {
+                    console.error(err2);
+                    return res.render('trips/add-item', {
+                        trip,
+                        errors: ['Something went wrong adding the item. Please try again.'],
+                        formData: { item_name, category, item_date, item_time, location, cost, notes }
+                    });
+                }
+                res.redirect('/trips/' + req.params.tripId);
+            }
+        );
     });
 });
 
