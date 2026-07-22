@@ -229,13 +229,109 @@ router.post('/:tripId/items/:itemId/edit', isLoggedIn, (req, res) => {
 });
 
 // ============================================
-// Student E - Delete trip
+// Student E - Delete trip (and itinerary items)
+// Confirmation happens client-side via confirm() in the EJS view
+// (see views/trips/view.ejs and views/trips/index.ejs).
+// Admins can delete ANY trip, not just their own.
 // ============================================
 router.post('/:id/delete', isLoggedIn, (req, res) => {
-    const sql = 'DELETE FROM trips WHERE trip_id = ? AND user_id = ?';
-    db.query(sql, [req.params.id, req.session.user.id], (err) => {
-        if (err) return res.send('Error deleting trip.');
-        res.redirect('/trips');
+    const tripId = req.params.id;
+    const user = req.session.user;
+
+    // Look up the trip by ID only (no user_id filter here) so we can
+    // tell the difference between "doesn't exist" and "not yours" —
+    // and so an admin is able to find/delete a trip they don't own.
+    const findSql = 'SELECT * FROM trips WHERE trip_id = ?';
+    db.query(findSql, [tripId], (err, results) => {
+        if (err) {
+            console.error(err);
+            return res.send('Error loading trip.');
+        }
+        if (results.length === 0) {
+            return res.status(404).send('Trip not found.');
+        }
+
+        const trip = results[0];
+        const isOwner = trip.user_id === user.id;
+        const isAdmin = user.role === 'admin';
+
+        if (!isOwner && !isAdmin) {
+            return res.status(403).send('You do not have permission to delete this trip.');
+        }
+
+        // Delete itinerary items first — no ON DELETE CASCADE is set up
+        // in the schema, so we clean these up manually to avoid orphaned
+        // rows / FK errors.
+        db.query('DELETE FROM itinerary_items WHERE trip_id = ?', [tripId], (err2) => {
+            if (err2) {
+                console.error(err2);
+                return res.send('Error deleting itinerary items for this trip.');
+            }
+
+            db.query('DELETE FROM trips WHERE trip_id = ?', [tripId], (err3) => {
+                if (err3) {
+                    console.error(err3);
+                    return res.send('Error deleting trip.');
+                }
+
+                console.log(
+                    `[DELETE] Trip ${tripId} ("${trip.trip_name}") deleted by user ${user.id} ` +
+                    (isAdmin && !isOwner ? '(ADMIN override)' : '(owner)')
+                );
+
+                res.redirect('/trips');
+            });
+        });
+    });
+});
+
+// ============================================
+// Student E - Delete itinerary item
+// Owner of the trip or an admin can delete any item in it.
+// NOTE: once Shu En's getTripAccess()/shared-trip logic lands, the
+// ownership check below should be widened to also allow 'edit' access
+// (i.e. isAdmin || access_level === 'owner' || access_level === 'edit'),
+// matching how the edit routes above already work.
+// ============================================
+router.post('/:tripId/items/:itemId/delete', isLoggedIn, (req, res) => {
+    const { tripId, itemId } = req.params;
+    const user = req.session.user;
+
+    const tripSql = 'SELECT * FROM trips WHERE trip_id = ?';
+    db.query(tripSql, [tripId], (err, tripResults) => {
+        if (err) {
+            console.error(err);
+            return res.send('Error loading trip.');
+        }
+        if (tripResults.length === 0) {
+            return res.status(404).send('Trip not found.');
+        }
+
+        const trip = tripResults[0];
+        const isOwner = trip.user_id === user.id;
+        const isAdmin = user.role === 'admin';
+
+        if (!isOwner && !isAdmin) {
+            return res.status(403).send('You do not have permission to delete this item.');
+        }
+
+        const deleteSql = 'DELETE FROM itinerary_items WHERE item_id = ? AND trip_id = ?';
+        db.query(deleteSql, [itemId, tripId], (err2, result) => {
+            if (err2) {
+                console.error(err2);
+                return res.send('Error deleting itinerary item.');
+            }
+            if (result.affectedRows === 0) {
+                return res.status(404).send('Itinerary item not found.');
+            }
+
+            console.log(
+                `[DELETE] Item ${itemId} removed from trip ${tripId} by user ${user.id} ` +
+                (isAdmin && !isOwner ? '(ADMIN override)' : '(owner)')
+            );
+
+            res.redirect('/trips/' + tripId);
+        });
     });
 });
 
