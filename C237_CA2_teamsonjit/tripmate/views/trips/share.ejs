@@ -1,0 +1,75 @@
+<%- include('../partials/header') %>
+
+<div class="page-header">
+    <p class="eyebrow">Manage Sharing</p>
+    <h1><%= trip.trip_name %></h1>
+</div>
+
+<% if (success_msg && success_msg.length > 0) { %>
+    <p class="trip-notes"><%= success_msg.join(' ') %></p>
+<% } %>
+<% if (error_msg && error_msg.length > 0) { %>
+    <ul class="error-list">
+        <% error_msg.forEach(function(msg) { %>
+            <li><%= msg %></li>
+        <% }) %>
+    </ul>
+<% } %>
+
+<div class="card">
+    <form action="/trips/<%= trip.trip_id %>/share" method="POST">
+        <label>Collaborator's Email</label>
+        <input type="email" name="email" value="<%= formData.email %>" required>
+
+        <label>Access Level</label>
+        <select name="permission">
+            <option value="view" <%= formData.permission === 'view' ? 'selected' : '' %>>View only</option>
+            <option value="edit" <%= formData.permission === 'edit' ? 'selected' : '' %>>Can edit</option>
+        </select>
+
+        <button type="submit">Invite</button>
+    </form>
+</div>
+
+<h2 class="section-heading">Current Collaborators</h2>
+<% if (collaborators.length === 0) { %>
+    <p>No one else has access to this trip yet.</p>
+<% } else { %>
+    <table>
+        <thead>
+            <tr>
+                <th>Username</th>
+                <th>Email</th>
+                <th>Access</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            <% collaborators.forEach(c => { %>
+                <tr>
+                    <td><%= c.username %></td>
+                    <td><%= c.email %></td>
+                    <td>
+                        <form action="/trips/<%= trip.trip_id %>/share/<%= c.collaborator_id %>/update" method="POST" style="display:inline;">
+                            <select name="permission" onchange="this.form.submit()">
+                                <option value="view" <%= c.permission === 'view' ? 'selected' : '' %>>View only</option>
+                                <option value="edit" <%= c.permission === 'edit' ? 'selected' : '' %>>Can edit</option>
+                            </select>
+                        </form>
+                    </td>
+                    <td>
+                        <form action="/trips/<%= trip.trip_id %>/share/<%= c.collaborator_id %>/remove" method="POST" style="display:inline;">
+                            <button type="submit" class="btn-danger btn-sm" onclick="return confirm('Remove ' + '<%= c.username %>' + ' from this trip?')">Remove</button>
+                        </form>
+                    </td>
+                </tr>
+            <% }) %>
+        </tbody>
+    </table>
+<% } %>
+
+<div class="actions-row">
+    <a href="/trips/<%= trip.trip_id %>" class="btn-outline">Back to Trip</a>
+</div>
+
+<%- include('../partials/footer') %>
