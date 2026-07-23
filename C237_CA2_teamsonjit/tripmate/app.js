@@ -63,6 +63,7 @@ app.db = db;
 const authRoutes = require('./routes/authRoutes');
 const tripRoutes = require('./routes/tripRoutes');
 const searchRoutes = require('./routes/bryanRoutes');
+const adminRoutes = require('./routes/adminRoutes');
 
 // ---- View engine setup ----
 app.set('view engine', 'ejs');
@@ -98,6 +99,7 @@ app.get('/', (req, res) => {
 app.use('/', authRoutes);        // login, register, logout
 app.use('/trips', tripRoutes);   // create, view, edit, delete
 app.use('/trips', searchRoutes); // search, filter, sort, share
+app.use('/admin', adminRoutes);  // admin-only dashboard (all trips)
 
 // ---- 404 handler ----
 app.use((req, res) => {

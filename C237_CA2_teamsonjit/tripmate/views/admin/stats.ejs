@@ -1,0 +1,78 @@
+<%- include('../partials/header') %>
+
+<div class="page-header">
+    <p class="eyebrow">Admin</p>
+    <h1>Stats Dashboard</h1>
+</div>
+
+<h2 class="section-heading">Totals</h2>
+<table class="admin-table">
+    <thead>
+        <tr>
+            <th>Metric</th>
+            <th>Count</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Total Users</td>
+            <td><%= totalUsers %></td>
+        </tr>
+        <tr>
+            <td>Total Trips</td>
+            <td><%= totalTrips %></td>
+        </tr>
+        <tr>
+            <td>Total Itinerary Items</td>
+            <td><%= totalItems %></td>
+        </tr>
+    </tbody>
+</table>
+
+<h2 class="section-heading">Itinerary Items by Category</h2>
+<% if (itemsByCategory.length === 0) { %>
+    <p>No itinerary items yet.</p>
+<% } else { %>
+    <table class="admin-table">
+        <thead>
+            <tr>
+                <th>Category</th>
+                <th>Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            <% itemsByCategory.forEach(row => { %>
+                <tr>
+                    <td><%= row.category %></td>
+                    <td><%= row.total %></td>
+                </tr>
+            <% }) %>
+        </tbody>
+    </table>
+<% } %>
+
+<h2 class="section-heading">Trips by Month</h2>
+<% if (tripsByMonth.length === 0) { %>
+    <p>No trips yet.</p>
+<% } else { %>
+    <table class="admin-table">
+        <thead>
+            <tr>
+                <th>Month</th>
+                <th>Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            <% const monthNames = ['', 'January', 'February', 'March', 'April', 'May', 'June',
+                                    'July', 'August', 'September', 'October', 'November', 'December']; %>
+            <% tripsByMonth.forEach(row => { %>
+                <tr>
+                    <td><%= monthNames[row.month] %></td>
+                    <td><%= row.total %></td>
+                </tr>
+            <% }) %>
+        </tbody>
+    </table>
+<% } %>
+
+<%- include('../partials/footer') %>

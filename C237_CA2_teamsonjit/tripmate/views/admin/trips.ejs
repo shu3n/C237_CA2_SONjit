@@ -1,0 +1,47 @@
+<%- include('../partials/header') %>
+
+<div class="page-header">
+    <p class="eyebrow">Admin</p>
+    <h1>All Trips</h1>
+</div>
+
+<p class="trip-notes">You are viewing every trip in TripMate. As an admin you can delete any trip, regardless of who owns it.</p>
+
+<% if (trips.length === 0) { %>
+    <p>No trips have been created yet.</p>
+<% } else { %>
+    <table class="admin-table">
+        <thead>
+            <tr>
+                <th>Trip Name</th>
+                <th>Owner</th>
+                <th>Dates</th>
+                <th>Budget</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            <% trips.forEach(trip => { %>
+                <tr>
+                    <td><a href="/trips/<%= trip.trip_id %>"><%= trip.trip_name %></a></td>
+                    <td><%= trip.owner_username %></td>
+                    <td>
+                        <% if (trip.start_date && trip.end_date) { %>
+                            <%= trip.start_date.toDateString() %> &ndash; <%= trip.end_date.toDateString() %>
+                        <% } else { %>
+                            &mdash;
+                        <% } %>
+                    </td>
+                    <td>$<%= trip.budget %></td>
+                    <td>
+                        <form action="/trips/<%= trip.trip_id %>/delete" method="POST" style="display:inline; margin:0;">
+                            <button type="submit" class="btn-danger btn-sm" onclick="return confirm('ADMIN: delete &quot;<%= trip.trip_name %>&quot; owned by <%= trip.owner_username %>?')">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+            <% }) %>
+        </tbody>
+    </table>
+<% } %>
+
+<%- include('../partials/footer') %>
