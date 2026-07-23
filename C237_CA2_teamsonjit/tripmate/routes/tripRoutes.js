@@ -36,12 +36,21 @@ router.get('/:id', isLoggedIn, (req, res) => {
 // ============================================
 // Noel - Create trip (forms + validation)
 // ============================================
+
+// Helper: re-render the create-trip form with the destinations dropdown populated
+function renderCreateTripForm(res, viewData) {
+    const destSql = 'SELECT * FROM destinations ORDER BY name';
+    db.query(destSql, (err, destinations) => {
+        res.render('trips/create', { ...viewData, destinations: err ? [] : destinations });
+    });
+}
+
 router.get('/create/new', isLoggedIn, (req, res) => {
-    res.render('trips/create', { errors: [], formData: {} });
+    renderCreateTripForm(res, { errors: [], formData: {} });
 });
 
 router.post('/create', isLoggedIn, (req, res) => {
-    const { trip_name, start_date, end_date, budget, notes } = req.body;
+    const { destination_id, trip_name, start_date, end_date, budget, notes } = req.body;
     const errors = [];
 
     // ---- Server-side validation (never trust the client) ----
@@ -62,21 +71,21 @@ router.post('/create', isLoggedIn, (req, res) => {
     }
 
     if (errors.length > 0) {
-        return res.render('trips/create', {
+        return renderCreateTripForm(res, {
             errors,
-            formData: { trip_name, start_date, end_date, budget, notes }
+            formData: { destination_id, trip_name, start_date, end_date, budget, notes }
         });
     }
 
-    const sql = `INSERT INTO trips (user_id, trip_name, start_date, end_date, budget, notes)
-                 VALUES (?, ?, ?, ?, ?, ?)`;
+    const sql = `INSERT INTO trips (user_id, destination_id, trip_name, start_date, end_date, budget, notes)
+                 VALUES (?, ?, ?, ?, ?, ?, ?)`;
 
-    db.query(sql, [req.session.user.id, trip_name.trim(), start_date, end_date, budget || 0, notes], (err) => {
+    db.query(sql, [req.session.user.id, destination_id || null, trip_name.trim(), start_date, end_date, budget || 0, notes], (err) => {
         if (err) {
             console.error(err);
-            return res.render('trips/create', {
+            return renderCreateTripForm(res, {
                 errors: ['Something went wrong creating your trip. Please try again.'],
-                formData: { trip_name, start_date, end_date, budget, notes }
+                formData: { destination_id, trip_name, start_date, end_date, budget, notes }
             });
         }
         res.redirect('/trips');

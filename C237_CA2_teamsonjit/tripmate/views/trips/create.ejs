@@ -16,6 +16,16 @@
         <label>Trip Name</label>
         <input type="text" name="trip_name" value="<%= formData.trip_name || '' %>" required>
 
+        <label>Destination (optional)</label>
+        <select name="destination_id">
+            <option value="">-- No destination selected --</option>
+            <% destinations.forEach(function(dest) { %>
+                <option value="<%= dest.destination_id %>" <%= String(formData.destination_id) === String(dest.destination_id) ? 'selected' : '' %>>
+                    <%= dest.name %>, <%= dest.country %>
+                </option>
+            <% }) %>
+        </select>
+        
         <label>Start Date</label>
         <input type="date" name="start_date" value="<%= formData.start_date || '' %>" required>
 
