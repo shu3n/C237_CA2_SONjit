@@ -17,24 +17,37 @@
     <p class="trip-notes"><%= trip.notes %></p>
 <% } %>
 
+<% const canEdit = trip.access_level === 'owner' || trip.access_level === 'edit'; %>
+<% const canDelete = user.id === trip.user_id || user.role === 'admin'; %>
+
+<% if (trip.access_level === 'view') { %>
+    <p class="field-hint">You have view-only access to this trip.</p>
+<% } %>
+
 <div class="actions-row">
-    <a href="/trips/<%= trip.trip_id %>/edit" class="btn-outline">Edit Trip</a>
+    <% if (canEdit) { %>
+        <a href="/trips/<%= trip.trip_id %>/edit" class="btn-outline">Edit Trip</a>
+    <% } %>
     <% if (user.id === trip.user_id) { %>
         <a href="/trips/<%= trip.trip_id %>/share" class="btn-outline">Manage Sharing</a>
     <% } %>
-    <form action="/trips/<%= trip.trip_id %>/delete" method="POST" style="display:inline; margin:0;">
-        <% if (user.role === 'admin' && user.id !== trip.user_id) { %>
-            <button type="submit" class="btn-danger" onclick="return confirm('You are an ADMIN deleting a trip you do not own. Delete this trip?')">Delete Trip (Admin)</button>
-        <% } else { %>
-            <button type="submit" class="btn-danger" onclick="return confirm('Delete this trip?')">Delete Trip</button>
-        <% } %>
-    </form>
+    <% if (canDelete) { %>
+        <form action="/trips/<%= trip.trip_id %>/delete" method="POST" style="display:inline; margin:0;">
+            <% if (user.role === 'admin' && user.id !== trip.user_id) { %>
+                <button type="submit" class="btn-danger" onclick="return confirm('You are an ADMIN deleting a trip you do not own. Delete this trip?')">Delete Trip (Admin)</button>
+            <% } else { %>
+                <button type="submit" class="btn-danger" onclick="return confirm('Delete this trip?')">Delete Trip</button>
+            <% } %>
+        </form>
+    <% } %>
 </div>
 
 <h2 class="section-heading">Itinerary</h2>
-<div>
-    <a href="/trips/<%= trip.trip_id %>/items/new" class="btn">+ Add Itinerary Item</a>
-</div>
+<% if (canEdit) { %>
+    <div>
+        <a href="/trips/<%= trip.trip_id %>/items/new" class="btn">+ Add Itinerary Item</a>
+    </div>
+<% } %>
 <ul class="item-list">
     <% items.forEach(item => { %>
         <li class="item-card">
@@ -44,10 +57,14 @@
                 <div class="item-details"><%= item.item_date.toDateString() %> <%= item.item_time %> &middot; $<%= item.cost %></div>
             </div>
             <div class="item-actions">
-                <a href="/trips/<%= trip.trip_id %>/items/<%= item.item_id %>/edit" class="btn-outline btn-sm">Edit</a>
-                <form action="/trips/<%= trip.trip_id %>/items/<%= item.item_id %>/delete" method="POST">
-                    <button type="submit" class="btn-danger btn-sm" onclick="return confirm('Delete this itinerary item?')">Delete</button>
-                </form>
+                <% if (canEdit) { %>
+                    <a href="/trips/<%= trip.trip_id %>/items/<%= item.item_id %>/edit" class="btn-outline btn-sm">Edit</a>
+                <% } %>
+                <% if (canDelete) { %>
+                    <form action="/trips/<%= trip.trip_id %>/items/<%= item.item_id %>/delete" method="POST">
+                        <button type="submit" class="btn-danger btn-sm" onclick="return confirm('Delete this itinerary item?')">Delete</button>
+                    </form>
+                <% } %>
             </div>
         </li>
     <% }) %>

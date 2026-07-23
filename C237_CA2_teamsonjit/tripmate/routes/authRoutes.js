@@ -9,12 +9,40 @@ const { db } = require('../app');
 
 // ---- GET: show register page ----
 router.get('/register', (req, res) => {
-    res.render('auth/register');
+    res.render('auth/register', { errors: [], formData: {} });
 });
+
+// Password policy: at least 8 characters, including 1 special character.
+const SPECIAL_CHAR_REGEX = /[!@#$%^&*(),.?":{}|<>_\-+=~`[\]\\/;']/;
+
+function getPasswordErrors(password) {
+    const errors = [];
+    if (!password || password.length < 8) {
+        errors.push('Password must be at least 8 characters long.');
+    }
+    if (!password || !SPECIAL_CHAR_REGEX.test(password)) {
+        errors.push('Password must contain at least 1 special character.');
+    }
+    return errors;
+}
 
 // ---- POST: handle registration ----
 router.post('/register', async (req, res) => {
     const { username, email, password } = req.body;
+    const formData = { username, email };
+
+    const errors = [];
+    if (!username || username.trim() === '') {
+        errors.push('Username is required.');
+    }
+    if (!email || email.trim() === '') {
+        errors.push('Email is required.');
+    }
+    errors.push(...getPasswordErrors(password));
+
+    if (errors.length > 0) {
+        return res.render('auth/register', { errors, formData });
+    }
 
     try {
         const hashedPassword = await bcrypt.hash(password, 10);
@@ -22,13 +50,19 @@ router.post('/register', async (req, res) => {
         db.query(sql, [username, email, hashedPassword, 'user'], (err, result) => {
             if (err) {
                 console.error(err);
-                return res.send('Registration failed. Username or email may already exist.');
+                return res.render('auth/register', {
+                    errors: ['Registration failed. Username or email may already exist.'],
+                    formData
+                });
             }
             res.redirect('/login');
         });
     } catch (err) {
         console.error(err);
-        res.send('Something went wrong.');
+        res.render('auth/register', {
+            errors: ['Something went wrong. Please try again.'],
+            formData
+        });
     }
 });
 

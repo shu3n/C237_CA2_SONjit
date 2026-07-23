@@ -19,16 +19,31 @@ router.get('/', isLoggedIn, (req, res) => {
     });
 });
 
+// Trip detail is visible to the owner, any collaborator the trip has been
+// shared with (view or edit permission), and admins (who can view/delete
+// any trip even without an explicit share — same override the delete
+// route already has).
 router.get('/:id', isLoggedIn, (req, res) => {
-    const tripSql = 'SELECT * FROM trips WHERE trip_id = ? AND user_id = ?';
     const itemsSql = 'SELECT * FROM itinerary_items WHERE trip_id = ? ORDER BY item_date, item_time';
 
-    db.query(tripSql, [req.params.id, req.session.user.id], (err, tripResults) => {
-        if (err || tripResults.length === 0) return res.send('Trip not found.');
-
-        db.query(itemsSql, [req.params.id], (err2, items) => {
+    function renderTrip(trip) {
+        db.query(itemsSql, [trip.trip_id], (err2, items) => {
             if (err2) return res.send('Error loading itinerary items.');
-            res.render('trips/view', { trip: tripResults[0], items });
+            res.render('trips/view', { trip, items });
+        });
+    }
+
+    getTripAccess(req.params.id, req.session.user.id, (err, trip) => {
+        if (err) return res.send('Error loading trip.');
+        if (trip) return renderTrip(trip);
+
+        if (req.session.user.role !== 'admin') {
+            return res.status(403).send('Trip not found or access denied.');
+        }
+
+        db.query('SELECT * FROM trips WHERE trip_id = ?', [req.params.id], (err2, results) => {
+            if (err2 || results.length === 0) return res.status(404).send('Trip not found.');
+            renderTrip({ ...results[0], access_level: 'admin' });
         });
     });
 });
@@ -96,22 +111,24 @@ router.post('/create', isLoggedIn, (req, res) => {
 // Noel - Add itinerary item (forms + validation)
 // ============================================
 router.get('/:tripId/items/new', isLoggedIn, (req, res) => {
-    const tripSql = 'SELECT * FROM trips WHERE trip_id = ? AND user_id = ?';
-    db.query(tripSql, [req.params.tripId, req.session.user.id], (err, tripResults) => {
+    getTripAccess(req.params.tripId, req.session.user.id, (err, trip) => {
         if (err) return res.send('Error loading trip.');
-        if (tripResults.length === 0) return res.status(403).send('Trip not found or access denied.');
+        if (!trip) return res.status(403).send('Trip not found or access denied.');
+        if (trip.access_level !== 'owner' && trip.access_level !== 'edit') {
+            return res.status(403).send('You only have view access to this trip.');
+        }
 
-        res.render('trips/add-item', { trip: tripResults[0], errors: [], formData: {} });
+        res.render('trips/add-item', { trip, errors: [], formData: {} });
     });
 });
 
 router.post('/:tripId/items/create', isLoggedIn, (req, res) => {
-    const tripSql = 'SELECT * FROM trips WHERE trip_id = ? AND user_id = ?';
-    db.query(tripSql, [req.params.tripId, req.session.user.id], (err, tripResults) => {
+    getTripAccess(req.params.tripId, req.session.user.id, (err, trip) => {
         if (err) return res.send('Error loading trip.');
-        if (tripResults.length === 0) return res.status(403).send('Trip not found or access denied.');
+        if (!trip || (trip.access_level !== 'owner' && trip.access_level !== 'edit')) {
+            return res.status(403).send('You do not have permission to add items to this trip.');
+        }
 
-        const trip = tripResults[0];
         const { item_name, category, item_date, item_time, location, cost, notes } = req.body;
         const errors = [];
         const validCategories = ['flight', 'hotel', 'activity', 'food', 'transport', 'other'];
