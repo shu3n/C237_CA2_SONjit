@@ -5,7 +5,7 @@
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcrypt');
-const db = require('../config/db');
+const { db } = require('../app');
 
 // ---- GET: show register page ----
 router.get('/register', (req, res) => {

@@ -4,8 +4,9 @@
 // ============================================
 const express = require('express');
 const router = express.Router();
-const db = require('../config/db');
+const { db } = require('../app');
 const { isLoggedIn } = require('./authRoutes');
+const { getTripAccess } = require('../utils/tripAccess');
 
 // ============================================
 // Student C - View trips (dashboard + detail)
@@ -104,7 +105,7 @@ router.post('/:tripId/items/create', isLoggedIn, (req, res) => {
         const trip = tripResults[0];
         const { item_name, category, item_date, item_time, location, cost, notes } = req.body;
         const errors = [];
-        const validCategories = ['Flight', 'Accommodation', 'Activity', 'Food', 'Transport', 'Other'];
+        const validCategories = ['flight', 'hotel', 'activity', 'food', 'transport', 'other'];
 
         // ---- Server-side validation ----
         if (!item_name || item_name.trim() === '') {
@@ -238,9 +239,6 @@ router.post('/:id/delete', isLoggedIn, (req, res) => {
     const tripId = req.params.id;
     const user = req.session.user;
 
-    // Look up the trip by ID only (no user_id filter here) so we can
-    // tell the difference between "doesn't exist" and "not yours" —
-    // and so an admin is able to find/delete a trip they don't own.
     const findSql = 'SELECT * FROM trips WHERE trip_id = ?';
     db.query(findSql, [tripId], (err, results) => {
         if (err) {
@@ -259,9 +257,6 @@ router.post('/:id/delete', isLoggedIn, (req, res) => {
             return res.status(403).send('You do not have permission to delete this trip.');
         }
 
-        // Delete itinerary items first — no ON DELETE CASCADE is set up
-        // in the schema, so we clean these up manually to avoid orphaned
-        // rows / FK errors.
         db.query('DELETE FROM itinerary_items WHERE trip_id = ?', [tripId], (err2) => {
             if (err2) {
                 console.error(err2);
@@ -287,11 +282,6 @@ router.post('/:id/delete', isLoggedIn, (req, res) => {
 
 // ============================================
 // Student E - Delete itinerary item
-// Owner of the trip or an admin can delete any item in it.
-// NOTE: once Shu En's getTripAccess()/shared-trip logic lands, the
-// ownership check below should be widened to also allow 'edit' access
-// (i.e. isAdmin || access_level === 'owner' || access_level === 'edit'),
-// matching how the edit routes above already work.
 // ============================================
 router.post('/:tripId/items/:itemId/delete', isLoggedIn, (req, res) => {
     const { tripId, itemId } = req.params;
