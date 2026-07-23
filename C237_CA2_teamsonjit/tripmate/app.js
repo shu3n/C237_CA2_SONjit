@@ -104,3 +104,9 @@ const PORT = 3000;
 app.listen(PORT, () => {
     console.log(`TripMate running on http://localhost:${PORT}`);
 });
+
+const tripRoutes = require('./routes/tripRoutes');
+const searchRoutes = require('./routes/bryanRoutes');
+
+app.use('/trips', tripRoutes);
+app.use('/trips', searchRoutes);

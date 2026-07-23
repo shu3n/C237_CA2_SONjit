@@ -326,28 +326,7 @@ router.post('/:tripId/items/:itemId/delete', isLoggedIn, (req, res) => {
 });
 
 // ============================================
-// Student F - Search / filter / sort trips
+// Student F - Search / filter / sort trips in bryanRoutes.js
 // ============================================
-router.get('/search/results', isLoggedIn, (req, res) => {
-    const { keyword, sort } = req.query;
-    let sql = 'SELECT * FROM trips WHERE user_id = ?';
-    const params = [req.session.user.id];
-
-    if (keyword) {
-        sql += ' AND trip_name LIKE ?';
-        params.push(`%${keyword}%`);
-    }
-
-    if (sort === 'budget') {
-        sql += ' ORDER BY budget DESC';
-    } else if (sort === 'date') {
-        sql += ' ORDER BY start_date ASC';
-    }
-
-    db.query(sql, params, (err, trips) => {
-        if (err) return res.send('Error searching trips.');
-        res.render('trips/index', { trips });
-    });
-});
 
 module.exports = router;
