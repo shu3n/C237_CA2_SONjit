@@ -2,9 +2,54 @@
 // TripMate - Main Application Entry Point
 // ============================================
 const express = require('express');
+const mysql = require('mysql2');
 const session = require('express-session');
-const path = require('path');
-require('dotenv').config();
+const flash = require('connect-flash');
+const multer = require('multer');
+const { useSyncExternalStore } = require('react');
+ 
+const app = express();
+ 
+// =========================
+// Multer Configuration
+// =========================
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, 'public/images');
+    },
+ 
+    filename: function (req, file, cb) {
+        cb(null, file.originalname);
+    }
+});
+ 
+const upload = multer({
+    storage: storage
+});
+ 
+// =========================
+// Database Connection
+// =========================
+const db = mysql.createConnection({
+    host: 'c237-eaint-mysql.mysql.database.azure.com',
+    user: 'c237_013',
+    password: 'c237013@2026!',
+    database: 'C237_013_teamsonjit',
+
+    //It tells ur app to talk to ur team's database name
+    //a secure, encrypted connection - which Azure
+    // requires before it will let you in
+    ssl: {
+        rejectUnauthorized: true
+    }
+});
+
+db.connect((err) => {
+    if (err) {
+        throw err;
+    }
+    console.log('Connected to database');
+});
 
 const authRoutes = require('./routes/authRoutes');
 const tripRoutes = require('./routes/tripRoutes');
