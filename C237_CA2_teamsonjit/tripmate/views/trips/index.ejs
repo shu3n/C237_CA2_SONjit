@@ -1,25 +1,37 @@
 <%- include('../partials/header') %>
 
-<h1>My Trips</h1>
+<div class="page-header">
+    <p class="eyebrow">Dashboard</p>
+    <h1>Where to?</h1>
+</div>
 
-<form action="/trips/search/results" method="GET" class="search-form">
-    <input type="text" name="keyword" placeholder="Search trips...">
-    <select name="sort">
-        <option value="">Sort by</option>
-        <option value="date">Start Date</option>
-        <option value="budget">Budget</option>
-    </select>
-    <button type="submit">Search</button>
-</form>
-
-<a href="/trips/create/new" class="btn">+ New Trip</a>
+<div class="search-bar">
+    <form action="/trips/search/results" method="GET" class="search-form">
+        <span class="search-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        </span>
+        <input type="text" name="keyword" placeholder="Search trips...">
+        <select name="sort">
+            <option value="">Sort by</option>
+            <option value="date">Start Date</option>
+            <option value="budget">Budget</option>
+        </select>
+        <button type="submit" class="btn-outline">Search</button>
+    </form>
+    <a href="/trips/create/new" class="btn">+ New Trip</a>
+</div>
 
 <ul class="trip-list">
     <% trips.forEach(trip => { %>
-        <li>
-            <a href="/trips/<%= trip.trip_id %>"><%= trip.trip_name %></a>
-            (<%= trip.start_date.toDateString() %> - <%= trip.end_date.toDateString() %>)
-            - Budget: $<%= trip.budget %>
+        <li class="trip-card">
+            <a href="/trips/<%= trip.trip_id %>" class="trip-card-link">
+                <img class="trip-card-image" src="<%- include('../partials/destination-image', { tripName: trip.trip_name }) %>" alt="<%= trip.trip_name %>">
+                <div class="trip-card-body">
+                    <h3 class="trip-card-title"><%= trip.trip_name %></h3>
+                    <p class="trip-card-dates"><%= trip.start_date.toDateString() %> &ndash; <%= trip.end_date.toDateString() %></p>
+                    <span class="trip-card-budget">$<%= trip.budget %></span>
+                </div>
+            </a>
         </li>
     <% }) %>
 </ul>

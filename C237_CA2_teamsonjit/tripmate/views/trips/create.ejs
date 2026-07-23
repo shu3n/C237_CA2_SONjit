@@ -1,5 +1,6 @@
 <%- include('../partials/header') %>
 
+<p class="eyebrow">New trip</p>
 <h1>Create New Trip</h1>
 
 <% if (errors && errors.length > 0) { %>
@@ -10,23 +11,25 @@
     </ul>
 <% } %>
 
-<form action="/trips/create" method="POST">
-    <label>Trip Name</label>
-    <input type="text" name="trip_name" value="<%= formData.trip_name || '' %>" required>
+<div class="card">
+    <form action="/trips/create" method="POST">
+        <label>Trip Name</label>
+        <input type="text" name="trip_name" value="<%= formData.trip_name || '' %>" required>
 
-    <label>Start Date</label>
-    <input type="date" name="start_date" value="<%= formData.start_date || '' %>" required>
+        <label>Start Date</label>
+        <input type="date" name="start_date" value="<%= formData.start_date || '' %>" required>
 
-    <label>End Date</label>
-    <input type="date" name="end_date" value="<%= formData.end_date || '' %>" required>
+        <label>End Date</label>
+        <input type="date" name="end_date" value="<%= formData.end_date || '' %>" required>
 
-    <label>Budget</label>
-    <input type="number" step="0.01" min="0" name="budget" value="<%= formData.budget || '' %>">
+        <label>Budget</label>
+        <input type="number" step="0.01" min="0" name="budget" value="<%= formData.budget || '' %>">
 
-    <label>Notes</label>
-    <textarea name="notes"><%= formData.notes || '' %></textarea>
+        <label>Notes</label>
+        <textarea name="notes"><%= formData.notes || '' %></textarea>
 
-    <button type="submit">Create Trip</button>
-</form>
+        <button type="submit">Create Trip</button>
+    </form>
+</div>
 
 <%- include('../partials/footer') %>

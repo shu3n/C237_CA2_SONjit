@@ -1,31 +1,51 @@
 <%- include('../partials/header') %>
 
-<h1><%= trip.trip_name %></h1>
-<p><%= trip.start_date.toDateString() %> - <%= trip.end_date.toDateString() %></p>
-<p>Budget: $<%= trip.budget %></p>
-<p><%= trip.notes %></p>
+<% const categoryIcons = { flight: '✈️', hotel: '🏨', activity: '🎫', food: '🍔', transport: '🚗', other: '📍' }; %>
 
-<a href="/trips/<%= trip.trip_id %>/edit">Edit Trip</a>
-<form action="/trips/<%= trip.trip_id %>/delete" method="POST" style="display:inline">
-    <% if (user.role === 'admin' && user.id !== trip.user_id) { %>
-        <button type="submit" onclick="return confirm('You are an ADMIN deleting a trip you do not own. Delete this trip?')">Delete Trip (Admin)</button>
-    <% } else { %>
-        <button type="submit" onclick="return confirm('Delete this trip?')">Delete Trip</button>
-    <% } %>
-</form>
+<img class="trip-hero-banner" src="<%- include('../partials/destination-image', { tripName: trip.trip_name }) %>" alt="<%= trip.trip_name %>">
 
-<h2>Itinerary</h2>
-<a href="/trips/<%= trip.trip_id %>/items/new" class="btn">+ Add Itinerary Item</a>
-<ul>
+<div class="page-header">
+    <p class="eyebrow">Trip</p>
+    <h1><%= trip.trip_name %></h1>
+</div>
+
+<div class="trip-meta">
+    <span class="trip-meta-tag"><%= trip.start_date.toDateString() %> &ndash; <%= trip.end_date.toDateString() %></span>
+    <span class="trip-meta-tag budget">$<%= trip.budget %></span>
+</div>
+<% if (trip.notes) { %>
+    <p class="trip-notes"><%= trip.notes %></p>
+<% } %>
+
+<div class="actions-row">
+    <a href="/trips/<%= trip.trip_id %>/edit" class="btn-outline">Edit Trip</a>
+    <form action="/trips/<%= trip.trip_id %>/delete" method="POST" style="display:inline; margin:0;">
+        <% if (user.role === 'admin' && user.id !== trip.user_id) { %>
+            <button type="submit" class="btn-danger" onclick="return confirm('You are an ADMIN deleting a trip you do not own. Delete this trip?')">Delete Trip (Admin)</button>
+        <% } else { %>
+            <button type="submit" class="btn-danger" onclick="return confirm('Delete this trip?')">Delete Trip</button>
+        <% } %>
+    </form>
+</div>
+
+<h2 class="section-heading">Itinerary</h2>
+<div>
+    <a href="/trips/<%= trip.trip_id %>/items/new" class="btn">+ Add Itinerary Item</a>
+</div>
+<ul class="item-list">
     <% items.forEach(item => { %>
-        <li>
-            <strong><%= item.item_name %></strong> (<%= item.category %>)
-            - <%= item.item_date.toDateString() %> <%= item.item_time %>
-            - $<%= item.cost %>
-            <a href="/trips/<%= trip.trip_id %>/items/<%= item.item_id %>/edit">Edit</a>
-            <form action="/trips/<%= trip.trip_id %>/items/<%= item.item_id %>/delete" method="POST" style="display:inline">
-                <button type="submit" onclick="return confirm('Delete this itinerary item?')">Delete</button>
-            </form>
+        <li class="item-card">
+            <span class="category-badge"><%= categoryIcons[item.category] || '📍' %> <%= item.category %></span>
+            <div class="item-body">
+                <div class="item-name"><%= item.item_name %></div>
+                <div class="item-details"><%= item.item_date.toDateString() %> <%= item.item_time %> &middot; $<%= item.cost %></div>
+            </div>
+            <div class="item-actions">
+                <a href="/trips/<%= trip.trip_id %>/items/<%= item.item_id %>/edit" class="btn-outline btn-sm">Edit</a>
+                <form action="/trips/<%= trip.trip_id %>/items/<%= item.item_id %>/delete" method="POST">
+                    <button type="submit" class="btn-danger btn-sm" onclick="return confirm('Delete this itinerary item?')">Delete</button>
+                </form>
+            </div>
         </li>
     <% }) %>
 </ul>

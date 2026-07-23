@@ -1,0 +1,16 @@
+<%
+    const destinations = [
+        { keyword: 'paris', file: 'paris.jpg' },
+        { keyword: 'tokyo', file: 'tokyo.jpg' },
+        { keyword: 'london', file: 'london.jpg' },
+        { keyword: 'new york', file: 'new-york.jpg' },
+        { keyword: 'bali', file: 'bali.jpg' },
+        { keyword: 'rome', file: 'rome.jpg' },
+        { keyword: 'dubai', file: 'dubai.jpg' },
+        { keyword: 'sydney', file: 'sydney.jpg' },
+        { keyword: 'bangkok', file: 'bangkok.jpg' },
+        { keyword: 'singapore', file: 'singapore.jpg' },
+    ];
+    const name = (tripName || '').toLowerCase();
+    const match = destinations.find(d => name.includes(d.keyword));
+%><%- '/images/destinations/' + (match ? match.file : 'default.jpg') %>
