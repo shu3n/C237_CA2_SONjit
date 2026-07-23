@@ -51,6 +51,13 @@ db.connect((err) => {
     console.log('Connected to database');
 });
 
+// IMPORTANT: export db BEFORE requiring the route files below.
+// Route files do require('../app') to get this same connection —
+// if this export happened after those requires, db would be
+// undefined inside them (Node resolves require() at load-time,
+// not later), which is exactly the bug that was here before.
+module.exports.db = db;
+
 const authRoutes = require('./routes/authRoutes');
 const tripRoutes = require('./routes/tripRoutes');
 
@@ -97,5 +104,3 @@ const PORT = 3000;
 app.listen(PORT, () => {
     console.log(`TripMate running on http://localhost:${PORT}`);
 });
-
-module.exports.db = db; // so route files can grab this same connection: require('../app').db
