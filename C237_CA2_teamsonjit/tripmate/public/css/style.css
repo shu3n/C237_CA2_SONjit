@@ -443,35 +443,21 @@ form.search-form {
   display: contents;
 }
 
-/* ---------- Username search ---------- */
-.user-search-bar {
+/* ---------- Username search (styled as one more filter-row field) ---------- */
+.username-search-field {
+  margin: 0;
+}
+.username-search-input-group {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  background: var(--surface);
-  border: 1.5px solid var(--border);
-  border-radius: var(--radius-pill);
-  padding: 8px 8px 8px 22px;
-  margin: 16px 0 24px;
-  max-width: 480px;
+  gap: 6px;
 }
-.user-search-bar .search-icon {
-  color: var(--text-muted);
-  display: flex;
-  align-items: center;
-  flex-shrink: 0;
+.username-search-input-group input {
+  min-width: 110px;
 }
-.user-search-bar input {
-  flex: 1;
-  min-width: 0;
-  border: none;
-  background: transparent;
-  padding: 10px 8px;
-  margin-top: 0;
-  font-weight: 500;
+.username-search-input-group button {
+  margin: 0;
+  white-space: nowrap;
 }
-.user-search-bar input:focus { box-shadow: none; }
-.user-search-bar button { margin: 0; white-space: nowrap; }
 
 @media (max-width: 640px) {
   .search-bar {

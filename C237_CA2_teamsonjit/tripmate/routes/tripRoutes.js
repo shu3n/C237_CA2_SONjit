@@ -19,9 +19,11 @@ router.get('/', isLoggedIn, (req, res) => {
     const userId = req.session.user.id;
     const sql = `
         SELECT DISTINCT t.*,
-            CASE WHEN t.user_id = ? THEN 'owner' ELSE tc.permission END AS access_level
+            CASE WHEN t.user_id = ? THEN 'owner' ELSE tc.permission END AS access_level,
+            COALESCE(d.image_filename, 'default.jpg') AS image_filename
         FROM trips t
         LEFT JOIN trip_collaborators tc ON tc.trip_id = t.trip_id AND tc.user_id = ?
+        LEFT JOIN destinations d ON d.destination_id = t.destination_id
         WHERE t.user_id = ? OR tc.user_id = ?
         ORDER BY t.start_date ASC
     `;
@@ -29,7 +31,7 @@ router.get('/', isLoggedIn, (req, res) => {
         if (err) return res.send('Error loading trips.');
         res.render('trips/index', {
             trips,
-            filters: { keyword: '', access: 'all', status: 'all', sort: 'date_asc', min_budget: '', max_budget: '' },
+            filters: { keyword: '', status: 'all', sort: 'date_asc', min_budget: '', max_budget: '' },
             searchErrors: [],
             searchPerformed: false,
             userSearch: null
@@ -59,7 +61,13 @@ router.get('/:id', isLoggedIn, (req, res) => {
             return res.status(403).send('Trip not found or access denied.');
         }
 
-        db.query('SELECT * FROM trips WHERE trip_id = ?', [req.params.id], (err2, results) => {
+        const adminSql = `
+            SELECT t.*, COALESCE(d.image_filename, 'default.jpg') AS image_filename
+            FROM trips t
+            LEFT JOIN destinations d ON d.destination_id = t.destination_id
+            WHERE t.trip_id = ?
+        `;
+        db.query(adminSql, [req.params.id], (err2, results) => {
             if (err2 || results.length === 0) return res.status(404).send('Trip not found.');
             renderTrip({ ...results[0], access_level: 'admin' });
         });
@@ -202,32 +210,58 @@ router.post('/:tripId/items/create', isLoggedIn, (req, res) => {
             errors.push('Cost must be a positive number.');
         }
 
-        if (errors.length > 0) {
-            return res.render('trips/add-item', {
-                trip,
-                errors,
-                formData: { item_name, category, item_date, item_time, location, cost, notes }
-            });
+        function finishAndSave(budgetErrors) {
+            const allErrors = errors.concat(budgetErrors);
+            if (allErrors.length > 0) {
+                return res.render('trips/add-item', {
+                    trip,
+                    errors: allErrors,
+                    formData: { item_name, category, item_date, item_time, location, cost, notes }
+                });
+            }
+
+            const insertSql = `INSERT INTO itinerary_items (trip_id, item_name, category, item_date, item_time, location, cost, notes)
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
+
+            db.query(insertSql,
+                [req.params.tripId, item_name.trim(), category, item_date, item_time || null, location, cost || 0, notes],
+                (err2) => {
+                    if (err2) {
+                        console.error(err2);
+                        return res.render('trips/add-item', {
+                            trip,
+                            errors: ['Something went wrong adding the item. Please try again.'],
+                            formData: { item_name, category, item_date, item_time, location, cost, notes }
+                        });
+                    }
+                    req.flash('success', `"${item_name.trim()}" was added to the itinerary.`);
+                    res.redirect('/trips/' + req.params.tripId);
+                }
+            );
         }
 
-        const insertSql = `INSERT INTO itinerary_items (trip_id, item_name, category, item_date, item_time, location, cost, notes)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
+        // Budget check: a trip budget of 0/NULL is treated as "no limit set"
+        // (consistent with budget being optional and defaulting to 0 on the
+        // create/edit trip forms), so the check is skipped entirely in that
+        // case rather than blocking every non-zero cost.
+        const tripBudget = Number(trip.budget);
+        if (errors.length > 0 || !tripBudget || tripBudget <= 0) {
+            return finishAndSave([]);
+        }
 
-        db.query(insertSql,
-            [req.params.tripId, item_name.trim(), category, item_date, item_time || null, location, cost || 0, notes],
-            (err2) => {
-                if (err2) {
-                    console.error(err2);
-                    return res.render('trips/add-item', {
-                        trip,
-                        errors: ['Something went wrong adding the item. Please try again.'],
-                        formData: { item_name, category, item_date, item_time, location, cost, notes }
-                    });
-                }
-                req.flash('success', `"${item_name.trim()}" was added to the itinerary.`);
-                res.redirect('/trips/' + req.params.tripId);
+        const newCost = (cost === '' || cost === undefined || isNaN(cost)) ? 0 : Number(cost);
+        db.query('SELECT COALESCE(SUM(cost), 0) AS total FROM itinerary_items WHERE trip_id = ?', [req.params.tripId], (sumErr, sumResult) => {
+            if (sumErr) {
+                console.error(sumErr);
+                return finishAndSave(['Could not verify budget. Please try again.']);
             }
-        );
+            const projectedTotal = Number(sumResult[0].total) + newCost;
+            if (projectedTotal > tripBudget) {
+                const over = (projectedTotal - tripBudget).toFixed(2);
+                return finishAndSave([`This item would put the trip $${over} over budget.`]);
+            }
+            finishAndSave([]);
+        });
     });
 });
 
@@ -348,31 +382,60 @@ router.post('/:tripId/items/:itemId/edit', isLoggedIn, (req, res) => {
             errors.push('Cost must be a positive number.');
         }
 
-        if (errors.length > 0) {
-            return res.render('trips/edit-item', {
-                trip,
-                item: { item_id: req.params.itemId, item_name, category, item_date, item_time, location, cost, notes },
-                errors
-            });
+        function finishAndSave(budgetErrors) {
+            const allErrors = errors.concat(budgetErrors);
+            if (allErrors.length > 0) {
+                return res.render('trips/edit-item', {
+                    trip,
+                    item: { item_id: req.params.itemId, item_name, category, item_date, item_time, location, cost, notes },
+                    errors: allErrors
+                });
+            }
+
+            const updateSql = `UPDATE itinerary_items
+                                SET item_name = ?, category = ?, item_date = ?, item_time = ?, location = ?, cost = ?, notes = ?
+                                WHERE item_id = ? AND trip_id = ?`;
+
+            db.query(updateSql,
+                [item_name.trim(), category, item_date, item_time || null, location, cost || 0, notes, req.params.itemId, req.params.tripId],
+                (err2) => {
+                    if (err2) {
+                        console.error(err2);
+                        return res.render('trips/edit-item', {
+                            trip,
+                            item: { item_id: req.params.itemId, item_name, category, item_date, item_time, location, cost, notes },
+                            errors: ['Something went wrong updating the item. Please try again.']
+                        });
+                    }
+                    req.flash('success', 'Itinerary item updated.');
+                    res.redirect('/trips/' + req.params.tripId);
+                }
+            );
         }
 
-        const updateSql = `UPDATE itinerary_items
-                            SET item_name = ?, category = ?, item_date = ?, item_time = ?, location = ?, cost = ?, notes = ?
-                            WHERE item_id = ? AND trip_id = ?`;
+        // Same budget check as add-item, but the sum EXCLUDES this item's own
+        // current cost — otherwise its old value would double-count against
+        // itself when checking the new value.
+        const tripBudget = Number(trip.budget);
+        if (errors.length > 0 || !tripBudget || tripBudget <= 0) {
+            return finishAndSave([]);
+        }
 
-        db.query(updateSql,
-            [item_name.trim(), category, item_date, item_time || null, location, cost || 0, notes, req.params.itemId, req.params.tripId],
-            (err2) => {
-                if (err2) {
-                    console.error(err2);
-                    return res.render('trips/edit-item', {
-                        trip,
-                        item: { item_id: req.params.itemId, item_name, category, item_date, item_time, location, cost, notes },
-                        errors: ['Something went wrong updating the item. Please try again.']
-                    });
+        const newCost = (cost === '' || cost === undefined || isNaN(cost)) ? 0 : Number(cost);
+        db.query(
+            'SELECT COALESCE(SUM(cost), 0) AS total FROM itinerary_items WHERE trip_id = ? AND item_id <> ?',
+            [req.params.tripId, req.params.itemId],
+            (sumErr, sumResult) => {
+                if (sumErr) {
+                    console.error(sumErr);
+                    return finishAndSave(['Could not verify budget. Please try again.']);
                 }
-                req.flash('success', 'Itinerary item updated.');
-                res.redirect('/trips/' + req.params.tripId);
+                const projectedTotal = Number(sumResult[0].total) + newCost;
+                if (projectedTotal > tripBudget) {
+                    const over = (projectedTotal - tripBudget).toFixed(2);
+                    return finishAndSave([`This item would put the trip $${over} over budget.`]);
+                }
+                finishAndSave([]);
             }
         );
     });

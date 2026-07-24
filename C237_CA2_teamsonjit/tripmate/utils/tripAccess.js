@@ -21,10 +21,12 @@ function getTripAccess(tripId, userId, callback) {
                 WHEN tc.permission IS NOT NULL THEN tc.permission
                 WHEN t.visibility = 'public' THEN 'public-view'
                 ELSE NULL
-            END AS access_level
+            END AS access_level,
+            COALESCE(d.image_filename, 'default.jpg') AS image_filename
         FROM trips t
         LEFT JOIN trip_collaborators tc
             ON tc.trip_id = t.trip_id AND tc.user_id = ?
+        LEFT JOIN destinations d ON d.destination_id = t.destination_id
         WHERE t.trip_id = ?
     `;
 

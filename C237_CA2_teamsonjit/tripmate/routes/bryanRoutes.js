@@ -4,17 +4,8 @@
 // ============================================
 const express = require('express');
 const router = express.Router();
+const { db } = require('../app');
 const { isLoggedIn } = require('./authRoutes');
-
-// The team's current app exports db at the end of app.js.
-// Getting it lazily here avoids the circular-require problem during startup.
-function getDb() {
-    const { db } = require('../app');
-    if (!db) {
-        throw new Error('Database connection is not available.');
-    }
-    return db;
-}
 
 function setFlash(req, type, message) {
     if (typeof req.flash === 'function') {
@@ -24,7 +15,7 @@ function setFlash(req, type, message) {
 
 function getOwnedTrip(tripId, userId, callback) {
     const sql = 'SELECT * FROM trips WHERE trip_id = ? AND user_id = ?';
-    getDb().query(sql, [tripId, userId], (err, results) => {
+    db.query(sql, [tripId, userId], (err, results) => {
         if (err) return callback(err, null);
         callback(null, results[0] || null);
     });
@@ -37,9 +28,6 @@ function getOwnedTrip(tripId, userId, callback) {
 router.get('/search/results', isLoggedIn, (req, res) => {
     const userId = req.session.user.id;
     const keyword = (req.query.keyword || '').trim();
-    const access = ['all', 'owned', 'shared'].includes(req.query.access)
-        ? req.query.access
-        : 'all';
     const status = ['all', 'upcoming', 'ongoing', 'past'].includes(req.query.status)
         ? req.query.status
         : 'all';
@@ -63,7 +51,6 @@ router.get('/search/results', isLoggedIn, (req, res) => {
 
     const filters = {
         keyword,
-        access,
         status,
         sort,
         min_budget: minBudgetRaw,
@@ -87,11 +74,13 @@ router.get('/search/results', isLoggedIn, (req, res) => {
             CASE
                 WHEN t.user_id = ? THEN 'owner'
                 ELSE tc.permission
-            END AS access_level
+            END AS access_level,
+            COALESCE(d.image_filename, 'default.jpg') AS image_filename
         FROM trips t
         INNER JOIN users owner ON owner.user_id = t.user_id
         LEFT JOIN trip_collaborators tc
             ON tc.trip_id = t.trip_id AND tc.user_id = ?
+        LEFT JOIN destinations d ON d.destination_id = t.destination_id
         WHERE (t.user_id = ? OR tc.user_id = ?)
     `;
     const params = [userId, userId, userId, userId];
@@ -100,14 +89,6 @@ router.get('/search/results', isLoggedIn, (req, res) => {
         sql += ' AND (t.trip_name LIKE ? OR COALESCE(t.notes, \'\') LIKE ? OR owner.username LIKE ?)';
         const searchValue = `%${keyword}%`;
         params.push(searchValue, searchValue, searchValue);
-    }
-
-    if (access === 'owned') {
-        sql += ' AND t.user_id = ?';
-        params.push(userId);
-    } else if (access === 'shared') {
-        sql += ' AND t.user_id <> ? AND tc.user_id = ?';
-        params.push(userId, userId);
     }
 
     if (status === 'upcoming') {
@@ -138,7 +119,7 @@ router.get('/search/results', isLoggedIn, (req, res) => {
     };
     sql += ` ORDER BY ${sortOptions[sort] || sortOptions.date_asc}`;
 
-    getDb().query(sql, params, (err, trips) => {
+    db.query(sql, params, (err, trips) => {
         if (err) {
             console.error('[BRYAN SEARCH ERROR]', err);
             return res.status(500).send('Error searching trips.');
@@ -161,7 +142,7 @@ router.get('/search/results', isLoggedIn, (req, res) => {
 // shared with the searcher via trip_collaborators. Never their private,
 // unshared trips — this is a privacy boundary, not just a filter.
 // ============================================
-const DEFAULT_FILTERS = { keyword: '', access: 'all', status: 'all', sort: 'date_asc', min_budget: '', max_budget: '' };
+const DEFAULT_FILTERS = { keyword: '', status: 'all', sort: 'date_asc', min_budget: '', max_budget: '' };
 
 router.get('/search/user', isLoggedIn, (req, res) => {
     const searcherId = req.session.user.id;
@@ -174,7 +155,7 @@ router.get('/search/user', isLoggedIn, (req, res) => {
         });
     }
 
-    getDb().query('SELECT user_id, username FROM users WHERE username = ?', [targetUsername], (err, userRows) => {
+    db.query('SELECT user_id, username FROM users WHERE username = ?', [targetUsername], (err, userRows) => {
         if (err) {
             console.error('[BRYAN USER SEARCH ERROR]', err);
             return res.status(500).send('Error searching users.');
@@ -195,14 +176,16 @@ router.get('/search/user', isLoggedIn, (req, res) => {
                 CASE
                     WHEN tc.permission IS NOT NULL THEN tc.permission
                     ELSE 'public-view'
-                END AS access_level
+                END AS access_level,
+                COALESCE(d.image_filename, 'default.jpg') AS image_filename
             FROM trips t
             LEFT JOIN trip_collaborators tc ON tc.trip_id = t.trip_id AND tc.user_id = ?
+            LEFT JOIN destinations d ON d.destination_id = t.destination_id
             WHERE t.user_id = ?
               AND (t.visibility = 'public' OR tc.user_id = ?)
             ORDER BY t.start_date ASC
         `;
-        getDb().query(sql, [searcherId, targetUserId, searcherId], (err2, trips) => {
+        db.query(sql, [searcherId, targetUserId, searcherId], (err2, trips) => {
             if (err2) {
                 console.error('[BRYAN USER SEARCH TRIPS ERROR]', err2);
                 return res.status(500).send('Error loading trips.');
@@ -247,7 +230,7 @@ router.get('/:id/share', isLoggedIn, (req, res) => {
             ORDER BY u.username ASC
         `;
 
-        getDb().query(collaboratorSql, [tripId], (err2, collaborators) => {
+        db.query(collaboratorSql, [tripId], (err2, collaborators) => {
             if (err2) {
                 console.error('[BRYAN COLLABORATOR LOAD ERROR]', err2);
                 return res.status(500).send('Error loading collaborators.');
@@ -287,7 +270,7 @@ router.post('/:id/share', isLoggedIn, (req, res) => {
         }
 
         const userSql = 'SELECT user_id, username, email FROM users WHERE LOWER(email) = ?';
-        getDb().query(userSql, [email], (err2, users) => {
+        db.query(userSql, [email], (err2, users) => {
             if (err2) {
                 console.error('[BRYAN USER LOOKUP ERROR]', err2);
                 return res.status(500).send('Error finding user.');
@@ -309,7 +292,7 @@ router.post('/:id/share', isLoggedIn, (req, res) => {
                 ON DUPLICATE KEY UPDATE permission = VALUES(permission)
             `;
 
-            getDb().query(shareSql, [tripId, invitedUser.user_id, permission], (err3) => {
+            db.query(shareSql, [tripId, invitedUser.user_id, permission], (err3) => {
                 if (err3) {
                     console.error('[BRYAN SHARE SAVE ERROR]', err3);
                     return res.status(500).send('Error saving collaborator access.');
@@ -350,7 +333,7 @@ router.post('/:id/share/:collaboratorId/update', isLoggedIn, (req, res) => {
             SET permission = ?
             WHERE collaborator_id = ? AND trip_id = ?
         `;
-        getDb().query(sql, [permission, collaboratorId, tripId], (err2, result) => {
+        db.query(sql, [permission, collaboratorId, tripId], (err2, result) => {
             if (err2) {
                 console.error('[BRYAN SHARE UPDATE ERROR]', err2);
                 return res.status(500).send('Error updating collaborator permission.');
@@ -379,7 +362,7 @@ router.post('/:id/share/:collaboratorId/remove', isLoggedIn, (req, res) => {
         if (!trip) return res.status(403).send('Only the trip owner can remove collaborators.');
 
         const sql = 'DELETE FROM trip_collaborators WHERE collaborator_id = ? AND trip_id = ?';
-        getDb().query(sql, [collaboratorId, tripId], (err2, result) => {
+        db.query(sql, [collaboratorId, tripId], (err2, result) => {
             if (err2) {
                 console.error('[BRYAN SHARE REMOVE ERROR]', err2);
                 return res.status(500).send('Error removing collaborator.');

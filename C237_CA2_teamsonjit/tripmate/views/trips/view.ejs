@@ -2,7 +2,7 @@
 
 <% const categoryIcons = { flight: '✈️', hotel: '🏨', activity: '🎫', food: '🍔', transport: '🚗', other: '📍' }; %>
 
-<img class="trip-hero-banner" src="<%- include('../partials/destination-image', { tripName: trip.trip_name }) %>" alt="<%= trip.trip_name %>">
+<img class="trip-hero-banner" src="/images/destinations/<%= trip.image_filename || 'default.jpg' %>" alt="<%= trip.trip_name %>">
 
 <div class="page-header">
     <p class="eyebrow">Trip</p>

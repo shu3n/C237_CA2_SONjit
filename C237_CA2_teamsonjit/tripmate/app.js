@@ -5,6 +5,7 @@ require('dotenv').config();
 const express = require('express');
 const mysql = require('mysql2');
 const session = require('express-session');
+const MySQLStore = require('express-mysql-session')(session);
 const flash = require('connect-flash');
 const path = require('path');
 
@@ -61,11 +62,20 @@ app.use(express.urlencoded({ extended: true })); // parse form data
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public'))); // css/js/images
 
+// Sessions are backed by MySQL (via the same pool as everything else),
+// not the default in-memory MemoryStore. On Vercel's serverless model a
+// request can land on a different instance than the one that created the
+// session, so an in-memory store made users appear to get randomly logged
+// out mid-session — not just after the cookie's maxAge, but any time a
+// request hit an instance that never saw that session in memory.
+const sessionStore = new MySQLStore({}, db);
+
 app.use(session({
     secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
-    cookie: { maxAge: 1000 * 60 * 60 * 2 } // 2 hours
+    store: sessionStore,
+    cookie: { maxAge: 1000 * 60 * 60 * 24 * 30 } // 30 days
 }));
 
 app.use(flash());
