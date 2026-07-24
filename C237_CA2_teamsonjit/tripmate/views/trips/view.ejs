@@ -34,9 +34,9 @@
     <% if (canDelete) { %>
         <form action="/trips/<%= trip.trip_id %>/delete" method="POST" style="display:inline; margin:0;">
             <% if (user.role === 'admin' && user.id !== trip.user_id) { %>
-                <button type="submit" class="btn-danger" onclick="return confirm('You are an ADMIN deleting a trip you do not own. Delete this trip?')">Delete Trip (Admin)</button>
+                <button type="submit" class="btn-danger" data-confirm="You are an ADMIN deleting a trip you do not own. Delete this trip?">Delete Trip (Admin)</button>
             <% } else { %>
-                <button type="submit" class="btn-danger" onclick="return confirm('Delete this trip?')">Delete Trip</button>
+                <button type="submit" class="btn-danger" data-confirm="Delete this trip?">Delete Trip</button>
             <% } %>
         </form>
     <% } %>
@@ -62,7 +62,7 @@
                 <% } %>
                 <% if (canDelete) { %>
                     <form action="/trips/<%= trip.trip_id %>/items/<%= item.item_id %>/delete" method="POST">
-                        <button type="submit" class="btn-danger btn-sm" onclick="return confirm('Delete this itinerary item?')">Delete</button>
+                        <button type="submit" class="btn-danger btn-sm" data-confirm="Delete this itinerary item?">Delete</button>
                     </form>
                 <% } %>
             </div>

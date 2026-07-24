@@ -5,74 +5,79 @@
     <h1>Stats Dashboard</h1>
 </div>
 
-<h2 class="section-heading">Totals</h2>
-<table class="admin-table">
-    <thead>
-        <tr>
-            <th>Metric</th>
-            <th>Count</th>
-        </tr>
-    </thead>
-    <tbody>
-        <tr>
-            <td>Total Users</td>
-            <td><%= totalUsers %></td>
-        </tr>
-        <tr>
-            <td>Total Trips</td>
-            <td><%= totalTrips %></td>
-        </tr>
-        <tr>
-            <td>Total Itinerary Items</td>
-            <td><%= totalItems %></td>
-        </tr>
-    </tbody>
-</table>
+<div class="actions-row">
+    <a href="/admin/stats/export" class="btn-outline">Export CSV</a>
+</div>
+
+<div class="stat-tiles">
+    <div class="stat-tile">
+        <span class="stat-tile-value"><%= totalUsers %></span>
+        <span class="stat-tile-label">Total Users</span>
+    </div>
+    <div class="stat-tile">
+        <span class="stat-tile-value"><%= totalTrips %></span>
+        <span class="stat-tile-label">Total Trips</span>
+    </div>
+    <div class="stat-tile">
+        <span class="stat-tile-value"><%= totalItems %></span>
+        <span class="stat-tile-label">Total Itinerary Items</span>
+    </div>
+</div>
+
+<h2 class="section-heading">Destination Popularity</h2>
+<% if (destinationPopularity.length === 0) { %>
+    <p>No destinations yet.</p>
+<% } else { %>
+    <% const maxDestTotal = Math.max(1, ...destinationPopularity.map(d => d.total)); %>
+    <div class="bar-chart">
+        <% destinationPopularity.forEach(d => { %>
+            <div class="bar-row">
+                <span class="bar-label"><%= d.name %>, <%= d.country %></span>
+                <div class="bar-track">
+                    <div class="bar-fill" style="width: <%= Math.round((d.total / maxDestTotal) * 100) %>%"></div>
+                </div>
+                <span class="bar-value"><%= d.total %></span>
+            </div>
+        <% }) %>
+    </div>
+<% } %>
 
 <h2 class="section-heading">Itinerary Items by Category</h2>
 <% if (itemsByCategory.length === 0) { %>
     <p>No itinerary items yet.</p>
 <% } else { %>
-    <table class="admin-table">
-        <thead>
-            <tr>
-                <th>Category</th>
-                <th>Total</th>
-            </tr>
-        </thead>
-        <tbody>
-            <% itemsByCategory.forEach(row => { %>
-                <tr>
-                    <td><%= row.category %></td>
-                    <td><%= row.total %></td>
-                </tr>
-            <% }) %>
-        </tbody>
-    </table>
+    <% const maxCatTotal = Math.max(1, ...itemsByCategory.map(c => c.total)); %>
+    <div class="bar-chart">
+        <% itemsByCategory.forEach(row => { %>
+            <div class="bar-row">
+                <span class="bar-label"><%= row.category %></span>
+                <div class="bar-track">
+                    <div class="bar-fill" style="width: <%= Math.round((row.total / maxCatTotal) * 100) %>%"></div>
+                </div>
+                <span class="bar-value"><%= row.total %></span>
+            </div>
+        <% }) %>
+    </div>
 <% } %>
 
 <h2 class="section-heading">Trips by Month</h2>
 <% if (tripsByMonth.length === 0) { %>
     <p>No trips yet.</p>
 <% } else { %>
-    <table class="admin-table">
-        <thead>
-            <tr>
-                <th>Month</th>
-                <th>Total</th>
-            </tr>
-        </thead>
-        <tbody>
-            <% const monthNames = ['', 'January', 'February', 'March', 'April', 'May', 'June',
-                                    'July', 'August', 'September', 'October', 'November', 'December']; %>
-            <% tripsByMonth.forEach(row => { %>
-                <tr>
-                    <td><%= monthNames[row.month] %></td>
-                    <td><%= row.total %></td>
-                </tr>
-            <% }) %>
-        </tbody>
-    </table>
+    <% const monthNames = ['', 'January', 'February', 'March', 'April', 'May', 'June',
+                            'July', 'August', 'September', 'October', 'November', 'December']; %>
+    <% const maxMonthTotal = Math.max(1, ...tripsByMonth.map(m => m.total)); %>
+    <div class="bar-chart">
+        <% tripsByMonth.forEach(row => { %>
+            <div class="bar-row">
+                <span class="bar-label"><%= monthNames[row.month] %></span>
+                <div class="bar-track">
+                    <div class="bar-fill" style="width: <%= Math.round((row.total / maxMonthTotal) * 100) %>%"></div>
+                </div>
+                <span class="bar-value"><%= row.total %></span>
+            </div>
+        <% }) %>
+    </div>
 <% } %>
 
 <%- include('../partials/footer') %>

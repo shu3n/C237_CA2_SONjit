@@ -2,6 +2,15 @@
 
 <p class="eyebrow"><%= trip.trip_name %></p>
 <h1>Edit itinerary item</h1>
+
+<% if (errors && errors.length > 0) { %>
+    <ul class="error-list">
+        <% errors.forEach(function(error) { %>
+            <li><%= error %></li>
+        <% }) %>
+    </ul>
+<% } %>
+
 <div class="card">
     <form action="/trips/<%= trip.trip_id %>/items/<%= item.item_id %>/edit" method="POST">
         <label>Item name</label>
@@ -18,16 +27,19 @@
         </select>
 
         <label>Date</label>
-        <input type="date" name="item_date" value="<%= item.item_date.toISOString().split('T')[0] %>" required>
+        <input type="date" name="item_date"
+               value="<%= item.item_date instanceof Date ? item.item_date.toISOString().split('T')[0] : item.item_date %>"
+               min="<%= trip.start_date.toISOString().split('T')[0] %>"
+               max="<%= trip.end_date.toISOString().split('T')[0] %>" required>
 
         <label>Time</label>
-        <input type="time" name="item_time" value="<%= item.item_time %>">
+        <input type="time" name="item_time" value="<%= item.item_time || '' %>">
 
         <label>Location</label>
         <input type="text" name="location" value="<%= item.location || '' %>">
 
         <label>Cost</label>
-        <input type="number" step="0.01" name="cost" value="<%= item.cost %>">
+        <input type="number" step="0.01" min="0" name="cost" value="<%= item.cost %>">
 
         <label>Notes</label>
         <textarea name="notes"><%= item.notes || '' %></textarea>

@@ -35,7 +35,7 @@
                     <td>$<%= trip.budget %></td>
                     <td>
                         <form action="/trips/<%= trip.trip_id %>/delete" method="POST" style="display:inline; margin:0;">
-                            <button type="submit" class="btn-danger btn-sm" onclick="return confirm('ADMIN: delete &quot;<%= trip.trip_name %>&quot; owned by <%= trip.owner_username %>?')">Delete</button>
+                            <button type="submit" class="btn-danger btn-sm" data-confirm="ADMIN: delete &quot;<%= trip.trip_name %>&quot; owned by <%= trip.owner_username %>?">Delete</button>
                         </form>
                     </td>
                 </tr>

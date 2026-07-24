@@ -15,7 +15,12 @@ router.get('/', isLoggedIn, (req, res) => {
     const sql = 'SELECT * FROM trips WHERE user_id = ?';
     db.query(sql, [req.session.user.id], (err, trips) => {
         if (err) return res.send('Error loading trips.');
-        res.render('trips/index', { trips });
+        res.render('trips/index', {
+            trips,
+            filters: { keyword: '', access: 'all', status: 'all', sort: 'date_asc', min_budget: '', max_budget: '' },
+            searchErrors: [],
+            searchPerformed: false
+        });
     });
 });
 
@@ -103,6 +108,7 @@ router.post('/create', isLoggedIn, (req, res) => {
                 formData: { destination_id, trip_name, start_date, end_date, budget, notes }
             });
         }
+        req.flash('success', `"${trip_name.trim()}" was created.`);
         res.redirect('/trips');
     });
 });
@@ -176,6 +182,7 @@ router.post('/:tripId/items/create', isLoggedIn, (req, res) => {
                         formData: { item_name, category, item_date, item_time, location, cost, notes }
                     });
                 }
+                req.flash('success', `"${item_name.trim()}" was added to the itinerary.`);
                 res.redirect('/trips/' + req.params.tripId);
             }
         );
@@ -192,7 +199,7 @@ router.get('/:id/edit', isLoggedIn, (req, res) => {
         if (trip.access_level !== 'owner' && trip.access_level !== 'edit') {
             return res.status(403).send('You only have view access to this trip.');
         }
-        res.render('trips/edit', { trip });
+        res.render('trips/edit', { trip, errors: [] });
     });
 });
 
@@ -204,11 +211,44 @@ router.post('/:id/edit', isLoggedIn, (req, res) => {
         }
 
         const { trip_name, start_date, end_date, budget, notes } = req.body;
+        const errors = [];
+
+        // ---- Server-side validation (never trust the client) — same rules as create ----
+        if (!trip_name || trip_name.trim() === '') {
+            errors.push('Trip name is required.');
+        }
+        if (!start_date) {
+            errors.push('Start date is required.');
+        }
+        if (!end_date) {
+            errors.push('End date is required.');
+        }
+        if (start_date && end_date && new Date(end_date) < new Date(start_date)) {
+            errors.push('End date cannot be earlier than the start date.');
+        }
+        if (budget !== '' && budget !== undefined && (isNaN(budget) || Number(budget) < 0)) {
+            errors.push('Budget must be a positive number.');
+        }
+
+        if (errors.length > 0) {
+            return res.render('trips/edit', {
+                trip: { ...trip, trip_name, start_date, end_date, budget, notes },
+                errors
+            });
+        }
+
         const sql = `UPDATE trips SET trip_name = ?, start_date = ?, end_date = ?, budget = ?, notes = ?
                      WHERE trip_id = ?`;
 
-        db.query(sql, [trip_name, start_date, end_date, budget, notes, req.params.id], (err2) => {
-            if (err2) return res.send('Error updating trip.');
+        db.query(sql, [trip_name.trim(), start_date, end_date, budget || 0, notes, req.params.id], (err2) => {
+            if (err2) {
+                console.error(err2);
+                return res.render('trips/edit', {
+                    trip: { ...trip, trip_name, start_date, end_date, budget, notes },
+                    errors: ['Something went wrong updating your trip. Please try again.']
+                });
+            }
+            req.flash('success', 'Trip updated.');
             res.redirect('/trips/' + req.params.id);
         });
     });
@@ -228,7 +268,7 @@ router.get('/:tripId/items/:itemId/edit', isLoggedIn, (req, res) => {
         const itemSql = 'SELECT * FROM itinerary_items WHERE item_id = ? AND trip_id = ?';
         db.query(itemSql, [req.params.itemId, req.params.tripId], (err2, itemResults) => {
             if (err2 || itemResults.length === 0) return res.send('Itinerary item not found.');
-            res.render('trips/edit-item', { trip, item: itemResults[0] });
+            res.render('trips/edit-item', { trip, item: itemResults[0], errors: [] });
         });
     });
 });
@@ -241,14 +281,54 @@ router.post('/:tripId/items/:itemId/edit', isLoggedIn, (req, res) => {
         }
 
         const { item_name, category, item_date, item_time, location, cost, notes } = req.body;
+        const errors = [];
+        const validCategories = ['flight', 'hotel', 'activity', 'food', 'transport', 'other'];
+
+        // ---- Server-side validation (never trust the client) — same rules as add-item ----
+        if (!item_name || item_name.trim() === '') {
+            errors.push('Item name is required.');
+        }
+        if (!category || !validCategories.includes(category)) {
+            errors.push('Please select a valid category.');
+        }
+        if (!item_date) {
+            errors.push('Date is required.');
+        } else {
+            const itemDateObj = new Date(item_date);
+            const tripStart = new Date(trip.start_date);
+            const tripEnd = new Date(trip.end_date);
+            if (itemDateObj < tripStart || itemDateObj > tripEnd) {
+                errors.push("Item date must fall within the trip's start and end dates.");
+            }
+        }
+        if (cost !== '' && cost !== undefined && (isNaN(cost) || Number(cost) < 0)) {
+            errors.push('Cost must be a positive number.');
+        }
+
+        if (errors.length > 0) {
+            return res.render('trips/edit-item', {
+                trip,
+                item: { item_id: req.params.itemId, item_name, category, item_date, item_time, location, cost, notes },
+                errors
+            });
+        }
+
         const updateSql = `UPDATE itinerary_items
                             SET item_name = ?, category = ?, item_date = ?, item_time = ?, location = ?, cost = ?, notes = ?
                             WHERE item_id = ? AND trip_id = ?`;
 
         db.query(updateSql,
-            [item_name, category, item_date, item_time, location, cost, notes, req.params.itemId, req.params.tripId],
+            [item_name.trim(), category, item_date, item_time || null, location, cost || 0, notes, req.params.itemId, req.params.tripId],
             (err2) => {
-                if (err2) return res.send('Error updating itinerary item.');
+                if (err2) {
+                    console.error(err2);
+                    return res.render('trips/edit-item', {
+                        trip,
+                        item: { item_id: req.params.itemId, item_name, category, item_date, item_time, location, cost, notes },
+                        errors: ['Something went wrong updating the item. Please try again.']
+                    });
+                }
+                req.flash('success', 'Itinerary item updated.');
                 res.redirect('/trips/' + req.params.tripId);
             }
         );
@@ -300,6 +380,7 @@ router.post('/:id/delete', isLoggedIn, (req, res) => {
                     (isAdmin && !isOwner ? '(ADMIN override)' : '(owner)')
                 );
 
+                req.flash('success', `"${trip.trip_name}" was deleted.` + (isAdmin && !isOwner ? ' (admin override)' : ''));
                 res.redirect('/trips');
             });
         });
@@ -346,6 +427,7 @@ router.post('/:tripId/items/:itemId/delete', isLoggedIn, (req, res) => {
                 (isAdmin && !isOwner ? '(ADMIN override)' : '(owner)')
             );
 
+            req.flash('success', 'Itinerary item deleted.');
             res.redirect('/trips/' + tripId);
         });
     });

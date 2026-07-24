@@ -31,11 +31,16 @@ const upload = multer({
 // =========================
 // Database Connection
 // =========================
-const db = mysql.createConnection({
+// A pool (not a single createConnection) so serverless invocations survive
+// Azure closing an idle connection between requests — each query borrows a
+// connection from the pool and reconnects automatically as needed, instead
+// of every query failing until the process cold-starts again.
+const db = mysql.createPool({
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
+    connectionLimit: 5,
 
     //It tells ur app to talk to ur team's database name
     //a secure, encrypted connection - which Azure
@@ -45,7 +50,7 @@ const db = mysql.createConnection({
     }
 });
 
-db.connect((err) => {
+db.query('SELECT 1', (err) => {
     if (err) {
         throw err;
     }

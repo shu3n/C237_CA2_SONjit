@@ -4,10 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>TripMate</title>
+    <script>
+        (function () {
+            var saved = localStorage.getItem('tripmate-theme');
+            var theme = saved || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            document.documentElement.setAttribute('data-theme', theme);
+        })();
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/css/style.css">
+    <script src="/js/theme.js" defer></script>
+    <script src="/js/confirm.js" defer></script>
 </head>
 <body>
     <nav class="navbar">
@@ -25,6 +34,24 @@
                 <a href="/login" class="nav-link">Login</a>
                 <a href="/register" class="nav-cta">Register</a>
             <% } %>
+            <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Toggle dark mode" aria-pressed="false">
+                <span class="theme-icon-light">☀️</span>
+                <span class="theme-icon-dark">🌙</span>
+            </button>
         </div>
     </nav>
     <main class="container">
+        <% if (typeof success_msg !== 'undefined' && success_msg && success_msg.length > 0) { %>
+            <div class="flash flash-success">
+                <% success_msg.forEach(function(msg) { %>
+                    <p><%= msg %></p>
+                <% }) %>
+            </div>
+        <% } %>
+        <% if (typeof error_msg !== 'undefined' && error_msg && error_msg.length > 0) { %>
+            <div class="flash flash-error">
+                <% error_msg.forEach(function(msg) { %>
+                    <p><%= msg %></p>
+                <% }) %>
+            </div>
+        <% } %>
