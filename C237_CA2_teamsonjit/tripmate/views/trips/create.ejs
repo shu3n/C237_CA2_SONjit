@@ -17,15 +17,24 @@
         <input type="text" name="trip_name" value="<%= formData.trip_name || '' %>" required>
 
         <label>Destination (optional)</label>
-        <select name="destination_id">
+        <select name="destination_id" id="destination_id">
             <option value="">-- No destination selected --</option>
             <% destinations.forEach(function(dest) { %>
                 <option value="<%= dest.destination_id %>" <%= String(formData.destination_id) === String(dest.destination_id) ? 'selected' : '' %>>
                     <%= dest.name %>, <%= dest.country %>
                 </option>
             <% }) %>
+            <option value="other" <%= formData.destination_id === 'other' ? 'selected' : '' %>>Other (not listed)</option>
         </select>
-        
+
+        <div id="custom-destination-fields" style="<%= formData.destination_id === 'other' ? '' : 'display:none;' %>">
+            <label>Custom Destination Name</label>
+            <input type="text" name="custom_destination_name" value="<%= formData.custom_destination_name || '' %>">
+
+            <label>Custom Destination Country</label>
+            <input type="text" name="custom_destination_country" value="<%= formData.custom_destination_country || '' %>">
+        </div>
+
         <label>Start Date</label>
         <input type="date" name="start_date" value="<%= formData.start_date || '' %>" required>
 
@@ -41,5 +50,20 @@
         <button type="submit">Create Trip</button>
     </form>
 </div>
+
+<script>
+(function () {
+    var select = document.getElementById('destination_id');
+    var customFields = document.getElementById('custom-destination-fields');
+    if (!select || !customFields) return;
+
+    function toggleCustomFields() {
+        customFields.style.display = select.value === 'other' ? '' : 'none';
+    }
+
+    select.addEventListener('change', toggleCustomFields);
+    toggleCustomFields();
+})();
+</script>
 
 <%- include('../partials/footer') %>

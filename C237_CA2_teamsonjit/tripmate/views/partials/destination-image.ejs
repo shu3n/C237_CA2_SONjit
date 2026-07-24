@@ -13,4 +13,4 @@
     ];
     const name = (tripName || '').toLowerCase();
     const match = destinations.find(d => name.includes(d.keyword));
-%><%- '/images/destinations/' + (match ? match.file : 'default.jpg') %>
+%><%- '/images/destinations/' + (match ? match.file : 'default.svg') %>

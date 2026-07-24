@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" width="1200" height="800" role="img" aria-label="TripMate">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1DCE79"/>
+      <stop offset="100%" stop-color="#16A863"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="800" fill="url(#bg)"/>
+  <text x="600" y="430" text-anchor="middle" font-family="Poppins, 'Segoe UI', Arial, sans-serif" font-weight="800" font-size="130" fill="#0B2B1D">TripMate</text>
+  <text x="600" y="485" text-anchor="middle" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-weight="600" font-size="34" letter-spacing="1" fill="#0B2B1D" opacity="0.72">YOUR NEXT ADVENTURE</text>
+</svg>

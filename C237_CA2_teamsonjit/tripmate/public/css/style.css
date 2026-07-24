@@ -249,6 +249,38 @@ input:focus, textarea:focus, select:focus {
 }
 textarea { resize: vertical; min-height: 80px; }
 
+.password-field {
+  position: relative;
+  margin-top: 6px;
+}
+.password-field input {
+  margin-top: 0;
+  padding-right: 44px;
+  width: 100%;
+}
+.password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 32px;
+  margin: 0;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.password-toggle:hover { color: var(--text-dark); background: var(--surface); }
+.password-toggle .icon-hide { display: none; }
+.password-toggle.is-visible .icon-show { display: none; }
+.password-toggle.is-visible .icon-hide { display: inline-flex; }
+
 .field-hint {
   margin: 4px 0 0;
   font-size: 0.78rem;

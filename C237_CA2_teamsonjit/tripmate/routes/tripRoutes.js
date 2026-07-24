@@ -70,7 +70,10 @@ router.get('/create/new', isLoggedIn, (req, res) => {
 });
 
 router.post('/create', isLoggedIn, (req, res) => {
-    const { destination_id, trip_name, start_date, end_date, budget, notes } = req.body;
+    const {
+        destination_id, trip_name, start_date, end_date, budget, notes,
+        custom_destination_name, custom_destination_country
+    } = req.body;
     const errors = [];
 
     // ---- Server-side validation (never trust the client) ----
@@ -89,28 +92,53 @@ router.post('/create', isLoggedIn, (req, res) => {
     if (budget !== '' && budget !== undefined && (isNaN(budget) || Number(budget) < 0)) {
         errors.push('Budget must be a positive number.');
     }
+    if (destination_id === 'other' && (!custom_destination_name || custom_destination_name.trim() === '')) {
+        errors.push('Please enter a name for the custom destination.');
+    }
+
+    const formData = {
+        destination_id, trip_name, start_date, end_date, budget, notes,
+        custom_destination_name, custom_destination_country
+    };
 
     if (errors.length > 0) {
-        return renderCreateTripForm(res, {
-            errors,
-            formData: { destination_id, trip_name, start_date, end_date, budget, notes }
+        return renderCreateTripForm(res, { errors, formData });
+    }
+
+    function insertTrip(finalDestinationId) {
+        const sql = `INSERT INTO trips (user_id, destination_id, trip_name, start_date, end_date, budget, notes)
+                     VALUES (?, ?, ?, ?, ?, ?, ?)`;
+
+        db.query(sql, [req.session.user.id, finalDestinationId, trip_name.trim(), start_date, end_date, budget || 0, notes], (err) => {
+            if (err) {
+                console.error(err);
+                return renderCreateTripForm(res, {
+                    errors: ['Something went wrong creating your trip. Please try again.'],
+                    formData
+                });
+            }
+            req.flash('success', `"${trip_name.trim()}" was created.`);
+            res.redirect('/trips');
         });
     }
 
-    const sql = `INSERT INTO trips (user_id, destination_id, trip_name, start_date, end_date, budget, notes)
-                 VALUES (?, ?, ?, ?, ?, ?, ?)`;
-
-    db.query(sql, [req.session.user.id, destination_id || null, trip_name.trim(), start_date, end_date, budget || 0, notes], (err) => {
-        if (err) {
-            console.error(err);
-            return renderCreateTripForm(res, {
-                errors: ['Something went wrong creating your trip. Please try again.'],
-                formData: { destination_id, trip_name, start_date, end_date, budget, notes }
-            });
-        }
-        req.flash('success', `"${trip_name.trim()}" was created.`);
-        res.redirect('/trips');
-    });
+    if (destination_id === 'other') {
+        // New custom destination: name is required (validated above), country
+        // falls back to '' rather than NULL since the column is NOT NULL.
+        const destSql = 'INSERT INTO destinations (name, country, description) VALUES (?, ?, NULL)';
+        db.query(destSql, [custom_destination_name.trim(), (custom_destination_country || '').trim()], (destErr, destResult) => {
+            if (destErr) {
+                console.error(destErr);
+                return renderCreateTripForm(res, {
+                    errors: ['Something went wrong saving the custom destination. Please try again.'],
+                    formData
+                });
+            }
+            insertTrip(destResult.insertId);
+        });
+    } else {
+        insertTrip(destination_id || null);
+    }
 });
 
 // ============================================
