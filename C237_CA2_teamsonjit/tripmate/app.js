@@ -6,27 +6,9 @@ const express = require('express');
 const mysql = require('mysql2');
 const session = require('express-session');
 const flash = require('connect-flash');
-const multer = require('multer');
 const path = require('path');
 
 const app = express();
-
-// =========================
-// Multer Configuration
-// =========================
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, 'public/images');
-    },
-
-    filename: function (req, file, cb) {
-        cb(null, file.originalname);
-    }
-});
-
-const upload = multer({
-    storage: storage
-});
 
 // =========================
 // Database Connection
