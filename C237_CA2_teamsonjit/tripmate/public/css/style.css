@@ -419,7 +419,8 @@ button:active { transform: scale(0.98); }
   color: var(--text-muted);
   font-weight: 600;
   padding: 10px 8px;
-  max-width: 130px;
+  width: 230px;
+  flex-shrink: 0;
 }
 .search-bar select:focus { box-shadow: none; }
 .search-bar .btn,
@@ -443,6 +444,9 @@ form.search-form {
     flex-direction: column;
     width: 100%;
     gap: 8px;
+  }
+  .search-bar select {
+    width: 100%;
   }
 }
 
