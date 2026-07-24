@@ -78,14 +78,16 @@ router.post('/login', (req, res) => {
     const sql = 'SELECT * FROM users WHERE email = ?';
     db.query(sql, [email], async (err, results) => {
         if (err || results.length === 0) {
-            return res.send('Invalid email or password.');
+            req.flash('error', 'Invalid email or password.');
+            return res.redirect('/login');
         }
 
         const user = results[0];
         const match = await bcrypt.compare(password, user.password);
 
         if (!match) {
-            return res.send('Invalid email or password.');
+            req.flash('error', 'Invalid email or password.');
+            return res.redirect('/login');
         }
 
         // Store minimal user info in session

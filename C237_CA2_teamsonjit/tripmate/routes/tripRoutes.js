@@ -11,9 +11,21 @@ const { getTripAccess } = require('../utils/tripAccess');
 // ============================================
 // Student C - View trips (dashboard + detail)
 // ============================================
+// Dashboard shows trips the user owns AND trips shared with them as a
+// collaborator (previously owned-only, so a shared trip never appeared
+// here — collaborators had to know to use the "Shared with me" search
+// filter to find it at all).
 router.get('/', isLoggedIn, (req, res) => {
-    const sql = 'SELECT * FROM trips WHERE user_id = ?';
-    db.query(sql, [req.session.user.id], (err, trips) => {
+    const userId = req.session.user.id;
+    const sql = `
+        SELECT DISTINCT t.*,
+            CASE WHEN t.user_id = ? THEN 'owner' ELSE tc.permission END AS access_level
+        FROM trips t
+        LEFT JOIN trip_collaborators tc ON tc.trip_id = t.trip_id AND tc.user_id = ?
+        WHERE t.user_id = ? OR tc.user_id = ?
+        ORDER BY t.start_date ASC
+    `;
+    db.query(sql, [userId, userId, userId, userId], (err, trips) => {
         if (err) return res.send('Error loading trips.');
         res.render('trips/index', {
             trips,
