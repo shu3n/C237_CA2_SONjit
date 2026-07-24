@@ -11,6 +11,14 @@
     </ul>
 <% } %>
 
+<%
+    let initialPreviewImage = 'default.jpg';
+    if (formData.destination_id && formData.destination_id !== 'other') {
+        const matchedDest = destinations.find(d => String(d.destination_id) === String(formData.destination_id));
+        if (matchedDest) initialPreviewImage = matchedDest.image_filename || 'default.jpg';
+    }
+%>
+
 <div class="card">
     <form action="/trips/create" method="POST">
         <label>Trip Name</label>
@@ -18,14 +26,15 @@
 
         <label>Destination (optional)</label>
         <select name="destination_id" id="destination_id">
-            <option value="">-- No destination selected --</option>
+            <option value="" data-image="default.jpg">-- No destination selected --</option>
             <% destinations.forEach(function(dest) { %>
-                <option value="<%= dest.destination_id %>" <%= String(formData.destination_id) === String(dest.destination_id) ? 'selected' : '' %>>
+                <option value="<%= dest.destination_id %>" data-image="<%= dest.image_filename || 'default.jpg' %>" <%= String(formData.destination_id) === String(dest.destination_id) ? 'selected' : '' %>>
                     <%= dest.name %>, <%= dest.country %>
                 </option>
             <% }) %>
-            <option value="other" <%= formData.destination_id === 'other' ? 'selected' : '' %>>Other (not listed)</option>
+            <option value="other" data-image="default.jpg" <%= formData.destination_id === 'other' ? 'selected' : '' %>>Other (not listed)</option>
         </select>
+        <img id="destination-preview" class="destination-preview-image" src="/images/destinations/<%= initialPreviewImage %>" alt="Destination preview">
 
         <div id="custom-destination-fields" style="<%= formData.destination_id === 'other' ? '' : 'display:none;' %>">
             <label>Custom Destination Name</label>
@@ -47,6 +56,13 @@
         <label>Notes</label>
         <textarea name="notes"><%= formData.notes || '' %></textarea>
 
+        <label>Visibility</label>
+        <select name="visibility">
+            <option value="private" <%= (formData.visibility || 'private') === 'private' ? 'selected' : '' %>>Private (only you and invited collaborators)</option>
+            <option value="public" <%= formData.visibility === 'public' ? 'selected' : '' %>>Public (anyone signed in can view)</option>
+        </select>
+        <p class="field-hint">Public trips can be viewed by any signed-in user, but only you and your collaborators can edit, delete, or manage sharing.</p>
+
         <button type="submit">Create Trip</button>
     </form>
 </div>
@@ -55,14 +71,27 @@
 (function () {
     var select = document.getElementById('destination_id');
     var customFields = document.getElementById('custom-destination-fields');
-    if (!select || !customFields) return;
+    var preview = document.getElementById('destination-preview');
 
     function toggleCustomFields() {
+        if (!select || !customFields) return;
         customFields.style.display = select.value === 'other' ? '' : 'none';
     }
 
-    select.addEventListener('change', toggleCustomFields);
-    toggleCustomFields();
+    function updatePreviewImage() {
+        if (!select || !preview) return;
+        var opt = select.options[select.selectedIndex];
+        var image = (opt && opt.getAttribute('data-image')) || 'default.jpg';
+        preview.src = '/images/destinations/' + image;
+    }
+
+    if (select) {
+        select.addEventListener('change', function () {
+            toggleCustomFields();
+            updatePreviewImage();
+        });
+        toggleCustomFields();
+    }
 })();
 </script>
 

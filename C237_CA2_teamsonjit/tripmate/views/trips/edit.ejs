@@ -28,6 +28,13 @@
         <label>Notes</label>
         <textarea name="notes"><%= trip.notes %></textarea>
 
+        <label>Visibility</label>
+        <select name="visibility">
+            <option value="private" <%= trip.visibility !== 'public' ? 'selected' : '' %>>Private (only you and invited collaborators)</option>
+            <option value="public" <%= trip.visibility === 'public' ? 'selected' : '' %>>Public (anyone signed in can view)</option>
+        </select>
+        <p class="field-hint">Public trips can be viewed by any signed-in user, but only you and your collaborators can edit, delete, or manage sharing.</p>
+
         <button type="submit">Save Changes</button>
     </form>
     <a href="/trips/<%= trip.trip_id %>" class="btn-outline" style="margin-top:16px; display:inline-block;">Cancel</a>

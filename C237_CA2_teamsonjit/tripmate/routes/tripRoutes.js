@@ -31,7 +31,8 @@ router.get('/', isLoggedIn, (req, res) => {
             trips,
             filters: { keyword: '', access: 'all', status: 'all', sort: 'date_asc', min_budget: '', max_budget: '' },
             searchErrors: [],
-            searchPerformed: false
+            searchPerformed: false,
+            userSearch: null
         });
     });
 });
@@ -84,8 +85,9 @@ router.get('/create/new', isLoggedIn, (req, res) => {
 router.post('/create', isLoggedIn, (req, res) => {
     const {
         destination_id, trip_name, start_date, end_date, budget, notes,
-        custom_destination_name, custom_destination_country
+        custom_destination_name, custom_destination_country, visibility
     } = req.body;
+    const safeVisibility = visibility === 'public' ? 'public' : 'private';
     const errors = [];
 
     // ---- Server-side validation (never trust the client) ----
@@ -110,7 +112,7 @@ router.post('/create', isLoggedIn, (req, res) => {
 
     const formData = {
         destination_id, trip_name, start_date, end_date, budget, notes,
-        custom_destination_name, custom_destination_country
+        custom_destination_name, custom_destination_country, visibility: safeVisibility
     };
 
     if (errors.length > 0) {
@@ -118,10 +120,10 @@ router.post('/create', isLoggedIn, (req, res) => {
     }
 
     function insertTrip(finalDestinationId) {
-        const sql = `INSERT INTO trips (user_id, destination_id, trip_name, start_date, end_date, budget, notes)
-                     VALUES (?, ?, ?, ?, ?, ?, ?)`;
+        const sql = `INSERT INTO trips (user_id, destination_id, trip_name, start_date, end_date, budget, notes, visibility)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
 
-        db.query(sql, [req.session.user.id, finalDestinationId, trip_name.trim(), start_date, end_date, budget || 0, notes], (err) => {
+        db.query(sql, [req.session.user.id, finalDestinationId, trip_name.trim(), start_date, end_date, budget || 0, notes, safeVisibility], (err) => {
             if (err) {
                 console.error(err);
                 return renderCreateTripForm(res, {
@@ -250,7 +252,8 @@ router.post('/:id/edit', isLoggedIn, (req, res) => {
             return res.status(403).send('You do not have permission to edit this trip.');
         }
 
-        const { trip_name, start_date, end_date, budget, notes } = req.body;
+        const { trip_name, start_date, end_date, budget, notes, visibility } = req.body;
+        const safeVisibility = visibility === 'public' ? 'public' : 'private';
         const errors = [];
 
         // ---- Server-side validation (never trust the client) — same rules as create ----
@@ -272,19 +275,19 @@ router.post('/:id/edit', isLoggedIn, (req, res) => {
 
         if (errors.length > 0) {
             return res.render('trips/edit', {
-                trip: { ...trip, trip_name, start_date, end_date, budget, notes },
+                trip: { ...trip, trip_name, start_date, end_date, budget, notes, visibility: safeVisibility },
                 errors
             });
         }
 
-        const sql = `UPDATE trips SET trip_name = ?, start_date = ?, end_date = ?, budget = ?, notes = ?
+        const sql = `UPDATE trips SET trip_name = ?, start_date = ?, end_date = ?, budget = ?, notes = ?, visibility = ?
                      WHERE trip_id = ?`;
 
-        db.query(sql, [trip_name.trim(), start_date, end_date, budget || 0, notes, req.params.id], (err2) => {
+        db.query(sql, [trip_name.trim(), start_date, end_date, budget || 0, notes, safeVisibility, req.params.id], (err2) => {
             if (err2) {
                 console.error(err2);
                 return res.render('trips/edit', {
-                    trip: { ...trip, trip_name, start_date, end_date, budget, notes },
+                    trip: { ...trip, trip_name, start_date, end_date, budget, notes, visibility: safeVisibility },
                     errors: ['Something went wrong updating your trip. Please try again.']
                 });
             }

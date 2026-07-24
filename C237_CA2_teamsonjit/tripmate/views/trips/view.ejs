@@ -22,6 +22,8 @@
 
 <% if (trip.access_level === 'view') { %>
     <p class="field-hint">You have view-only access to this trip.</p>
+<% } else if (trip.access_level === 'public-view') { %>
+    <p class="field-hint">This is a public trip — you can view it, but only the owner and their collaborators can make changes.</p>
 <% } %>
 
 <div class="actions-row">

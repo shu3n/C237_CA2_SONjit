@@ -75,7 +75,8 @@ router.get('/search/results', isLoggedIn, (req, res) => {
             trips: [],
             filters,
             searchErrors: errors,
-            searchPerformed: true
+            searchPerformed: true,
+            userSearch: null
         });
     }
 
@@ -147,7 +148,69 @@ router.get('/search/results', isLoggedIn, (req, res) => {
             trips,
             filters,
             searchErrors: [],
-            searchPerformed: true
+            searchPerformed: true,
+            userSearch: null
+        });
+    });
+});
+
+// ============================================
+// SEARCH BY USERNAME
+// GET /trips/search/user
+// Returns another user's PUBLIC trips, plus any of their trips already
+// shared with the searcher via trip_collaborators. Never their private,
+// unshared trips — this is a privacy boundary, not just a filter.
+// ============================================
+const DEFAULT_FILTERS = { keyword: '', access: 'all', status: 'all', sort: 'date_asc', min_budget: '', max_budget: '' };
+
+router.get('/search/user', isLoggedIn, (req, res) => {
+    const searcherId = req.session.user.id;
+    const targetUsername = (req.query.username || '').trim();
+
+    if (!targetUsername) {
+        return res.render('trips/index', {
+            trips: [], filters: DEFAULT_FILTERS, searchErrors: [], searchPerformed: false,
+            userSearch: null
+        });
+    }
+
+    getDb().query('SELECT user_id, username FROM users WHERE username = ?', [targetUsername], (err, userRows) => {
+        if (err) {
+            console.error('[BRYAN USER SEARCH ERROR]', err);
+            return res.status(500).send('Error searching users.');
+        }
+        if (userRows.length === 0) {
+            return res.render('trips/index', {
+                trips: [], filters: DEFAULT_FILTERS, searchErrors: [], searchPerformed: false,
+                userSearch: { username: targetUsername, notFound: true }
+            });
+        }
+
+        const targetUserId = userRows[0].user_id;
+        // A trip owned by targetUserId is included only if it's public,
+        // or the searcher specifically has a trip_collaborators row for
+        // it — never just because it belongs to that user.
+        const sql = `
+            SELECT t.*,
+                CASE
+                    WHEN tc.permission IS NOT NULL THEN tc.permission
+                    ELSE 'public-view'
+                END AS access_level
+            FROM trips t
+            LEFT JOIN trip_collaborators tc ON tc.trip_id = t.trip_id AND tc.user_id = ?
+            WHERE t.user_id = ?
+              AND (t.visibility = 'public' OR tc.user_id = ?)
+            ORDER BY t.start_date ASC
+        `;
+        getDb().query(sql, [searcherId, targetUserId, searcherId], (err2, trips) => {
+            if (err2) {
+                console.error('[BRYAN USER SEARCH TRIPS ERROR]', err2);
+                return res.status(500).send('Error loading trips.');
+            }
+            res.render('trips/index', {
+                trips, filters: DEFAULT_FILTERS, searchErrors: [], searchPerformed: false,
+                userSearch: { username: userRows[0].username, notFound: false }
+            });
         });
     });
 });

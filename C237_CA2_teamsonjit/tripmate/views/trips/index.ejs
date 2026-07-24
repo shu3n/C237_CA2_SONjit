@@ -61,9 +61,25 @@
     </label>
 </div>
 
+<h2 class="section-heading">Find a Traveler</h2>
+<form action="/trips/search/user" method="GET" class="user-search-bar">
+    <span class="search-icon">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+    </span>
+    <input type="text" name="username" placeholder="Search by username..." value="<%= userSearch ? userSearch.username : '' %>">
+    <button type="submit" class="btn-outline">Search</button>
+</form>
+<% if (userSearch && userSearch.notFound) { %>
+    <p class="trip-notes">No user found with the username "<%= userSearch.username %>".</p>
+<% } else if (userSearch && userSearch.username) { %>
+    <p class="eyebrow">Public trips from @<%= userSearch.username %></p>
+<% } %>
+
 <% if (trips.length === 0) { %>
     <p class="trip-notes">
-        <% if (searchPerformed) { %>
+        <% if (userSearch && userSearch.username && !userSearch.notFound) { %>
+            @<%= userSearch.username %> has no public trips (or trips shared with you).
+        <% } else if (searchPerformed) { %>
             No trips match those filters. Try widening your search.
         <% } else { %>
             You haven't created any trips yet — start with "+ New Trip" above.
@@ -82,6 +98,8 @@
                     <span class="trip-card-budget">$<%= trip.budget %></span>
                     <% if (trip.access_level === 'view' || trip.access_level === 'edit') { %>
                         <span class="category-badge">Shared (<%= trip.access_level %>)</span>
+                    <% } else if (trip.access_level === 'public-view') { %>
+                        <span class="category-badge">Public</span>
                     <% } %>
                 </div>
             </a>
